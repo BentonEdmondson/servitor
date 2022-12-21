@@ -3,7 +3,6 @@ package kinds
 import (
 	"strings"
 	"net/url"
-	"mimicry/shared"
 	"mimicry/style"
 	"fmt"
 )
@@ -11,12 +10,12 @@ import (
 type Actor map[string]any
 
 func (a Actor) Kind() (string, error) {
-	kind, err := shared.Get[string](a, "type")
+	kind, err := Get[string](a, "type")
 	return strings.ToLower(kind), err
 }
 
 func (a Actor) Name() (string, error) {
-	name, err := shared.GetNatural(a, "name", "en")
+	name, err := GetNatural(a, "name", "en")
 	return strings.TrimSpace(name), err
 }
 
@@ -37,11 +36,11 @@ func (a Actor) Category() string {
 }
 
 func (a Actor) Identifier() (*url.URL, error) {
-	return shared.GetURL(a, "id")
+	return GetURL(a, "id")
 }
 
 func (a Actor) Bio() (string, error) {
-	bio, err := shared.GetNatural(a, "summary", "en")
+	bio, err := GetNatural(a, "summary", "en")
 	return strings.TrimSpace(bio), err
 }
 

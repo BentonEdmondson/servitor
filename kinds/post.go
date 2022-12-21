@@ -4,9 +4,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
-	"mimicry/shared"
 	"mimicry/style"
-	"mimicry/request"
 	"fmt"
 )
 
@@ -15,17 +13,17 @@ type Post map[string]any
 // TODO: make the Post references *Post because why not
 
 func (p Post) Kind() (string, error) {
-	kind, err := shared.Get[string](p, "type")
+	kind, err := Get[string](p, "type")
 	return strings.ToLower(kind), err
 }
 
 func (p Post) Title() (string, error) {
-	title, err := shared.GetNatural(p, "name", "en")
+	title, err := GetNatural(p, "name", "en")
 	return strings.TrimSpace(title), err
 }
 
 func (p Post) Body() (string, error) {
-	body, err := shared.GetNatural(p, "content", "en")
+	body, err := GetNatural(p, "content", "en")
 	return strings.TrimSpace(body), err
 }
 
@@ -35,15 +33,15 @@ func (p Post) BodyPreview() (string, error) {
 }
 
 func (p Post) Identifier() (*url.URL, error) {
-	return shared.GetURL(p, "id")
+	return GetURL(p, "id")
 }
 
 func (p Post) Created() (time.Time, error) {
-	return shared.GetTime(p, "published")
+	return GetTime(p, "published")
 }
 
 func (p Post) Updated() (time.Time, error) {
-	return shared.GetTime(p, "updated")
+	return GetTime(p, "updated")
 }
 
 func (p Post) Category() string {
@@ -69,10 +67,10 @@ func (p Post) Creators() []Actor {
 
 	for _, el := range attributions {
 		switch narrowed := el.(type) {
-		case shared.JSON:
+		case JSON:
 			source, err := p.Identifier()
 			if err != nil { continue }
-			resolved, err := Create(narrowed, source)
+			resolved, err := Construct(narrowed, source)
 			if err != nil { continue }
 			actor, isActor := resolved.(Actor)
 			if !isActor { continue }
@@ -80,12 +78,9 @@ func (p Post) Creators() []Actor {
 		case string:
 			url, err := url.Parse(narrowed)
 			if err != nil { continue }
-			response, err := request.Fetch(url)
+			object, err := Fetch(url)
 			if err != nil { continue }
-			// this step will be implicit after merge
-			structured, err := Create(response, url)
-			if err != nil { continue }
-			actor, isActor := structured.(Actor)
+			actor, isActor := object.(Actor)
 			if !isActor { continue }
 			output = append(output, actor)
 		default: continue

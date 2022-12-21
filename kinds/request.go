@@ -1,4 +1,4 @@
-package request
+package kinds
 
 import (
 	"strings"
@@ -13,48 +13,43 @@ import (
 var client = &http.Client{}
 //var cache = TODO
 
-func Fetch(link *url.URL) (map[string]any, error) {
+func Fetch(url *url.URL) (Object, error) {
 	const requiredContentType = `application/ld+json; profile="https://www.w3.org/ns/activitystreams"`
 	const optionalContentType = "application/activity+json"
 
-	// convert URL to string
-	url := link.String()
+	link := url.String()
 
-	// create the get request
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", link, nil)
 	if err != nil {
-		return map[string]any{}, err
+		return nil, err
 	}
 
-	// add the accept header
+	// add the accept header, some servers only respond if the optional
+	// content type is included as well
 	// § 3.2
 	req.Header.Add("Accept", fmt.Sprintf("%s, %s", requiredContentType, optionalContentType))
 
-	// send the request
 	resp, err := client.Do(req)
 	if err != nil {
-		return map[string]any{}, err
+		return nil, err
 	}
 
-	// check the status code
 	if resp.StatusCode != 200 {
 		return nil, errors.New("The server returned a status code of " + string(resp.StatusCode))
 	}
 
-	// check the response content type
 	if contentType := resp.Header.Get("Content-Type"); contentType == "" {
 		return nil, errors.New("The server's response did not contain a content type")
 	} else if !strings.Contains(contentType, requiredContentType) && !strings.Contains(contentType, optionalContentType) {
 		return nil, errors.New("The server responded with the invalid content type of " + contentType)
 	}
 
-	// read the body into a map
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	var object map[string]any
-	if err := json.Unmarshal(body, &object); err != nil {
+	var unstructured map[string]any
+	if err := json.Unmarshal(body, &unstructured); err != nil {
 		return nil, err
 	}
 
-	return object, nil
+	return Construct(unstructured, url)
 }

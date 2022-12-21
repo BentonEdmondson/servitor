@@ -1,4 +1,4 @@
-package shared
+package kinds
 
 import (
 	"errors"
@@ -23,7 +23,7 @@ func Get[T any](o JSON, key string) (T, error) {
 
 // some fields have "natural language values" meaning that I should check
 // `contentMap[language]`, followed by `content`, followed by `contentMap["und"]`
-// to find the content of the post
+// to find, e.g., the content of the post
 // https://www.w3.org/TR/activitystreams-core/#naturalLanguageValues
 func GetNatural(o JSON, key string, language string) (string, error) {
 	values, valuesErr := Get[JSON](o, key+"Map")
