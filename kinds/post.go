@@ -48,48 +48,8 @@ func (p Post) Category() string {
 	return "post"
 }
 
-// TODO: this should return errors so I can add warnings to
-// describe problems
-func (p Post) Creators() []Actor {
-	// TODO: this line needs an existence check
-	attributedTo, ok := p["attributedTo"]
-	if !ok {
-		return []Actor{}
-	}
-
-	// if not an array, make it an array
-	attributions := []any{}
-	if attributedToList, isList := attributedTo.([]any); isList {
-		attributions = attributedToList
-	} else {
-		attributions = []any{attributedTo}
-	}
-
-	output := []Actor{}
-
-	for _, el := range attributions {
-		switch narrowed := el.(type) {
-		case Dict:
-			source, err := p.Identifier()
-			if err != nil { continue }
-			resolved, err := Construct(narrowed, source)
-			if err != nil { continue }
-			actor, isActor := resolved.(Actor)
-			if !isActor { continue }
-			output = append(output, actor)
-		case string:
-			url, err := url.Parse(narrowed)
-			if err != nil { continue }
-			object, err := Fetch(url)
-			if err != nil { continue }
-			actor, isActor := object.(Actor)
-			if !isActor { continue }
-			output = append(output, actor)
-		default: continue
-		}
-	}
-
-	return output
+func (p Post) Creators() ([]Actor, error) {
+	return GetContent[Actor](p, "attributedTo")
 }
 
 func (p Post) String() string {
@@ -110,7 +70,7 @@ func (p Post) String() string {
 		output += time.Now().Sub(created).String()
 	}
 
-	if creators := p.Creators(); len(creators) != 0 {
+	if creators, err := p.Creators(); err == nil {
 		output += " "
 		for _, creator := range creators {
 			if name, err := creator.InlineName(); err == nil {

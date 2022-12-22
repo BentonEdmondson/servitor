@@ -62,3 +62,47 @@ func GetURL(o Dict, key string) (*url.URL, error) {
 		return url.Parse(value)
 	}
 }
+
+func GetContent[T Content](d Dict, key string) ([]T, error) {
+
+	value, ok := d["attributedTo"]
+	if !ok {
+		return []T{}, nil
+	}
+
+	list := []any{}
+	
+	if valueList, isList := value.([]any); isList {
+		list = valueList
+	} else {
+		list = []any{value}
+	}
+	
+	output := []T{}
+	
+	for _, el := range list {
+		switch narrowed := el.(type) {
+		case Dict:
+			// TODO: if source is absent, must refetch
+			source, err := GetURL(d, "id")
+			if err != nil { continue }
+			resolved, err := Construct(narrowed, source)
+			if err != nil { continue }
+			asT, isT := resolved.(T)
+			if !isT { continue }
+			output = append(output, asT)
+		case string:
+			url, err := url.Parse(narrowed)
+			if err != nil { continue }
+			object, err := Fetch(url)
+			if err != nil { continue }
+			asT, isT := object.(T)
+			if !isT { continue }
+			output = append(output, asT)
+		default: continue
+		}
+	}
+
+	return output, nil
+	
+}
