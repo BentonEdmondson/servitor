@@ -8,9 +8,9 @@ import (
 
 // TODO throughout this file: attach the problematic object to the error
 
-type JSON = map[string]any
+type Dict = map[string]any
 
-func Get[T any](o JSON, key string) (T, error) {
+func Get[T any](o Dict, key string) (T, error) {
 	var zero T
 	if value, ok := o[key]; !ok {
 		return zero, errors.New("Object does not contain key " + key)
@@ -25,8 +25,8 @@ func Get[T any](o JSON, key string) (T, error) {
 // `contentMap[language]`, followed by `content`, followed by `contentMap["und"]`
 // to find, e.g., the content of the post
 // https://www.w3.org/TR/activitystreams-core/#naturalLanguageValues
-func GetNatural(o JSON, key string, language string) (string, error) {
-	values, valuesErr := Get[JSON](o, key+"Map")
+func GetNatural(o Dict, key string, language string) (string, error) {
+	values, valuesErr := Get[Dict](o, key+"Map")
 
 	if valuesErr == nil {
 		if value, err := Get[string](values, language); err == nil {
@@ -48,14 +48,14 @@ func GetNatural(o JSON, key string, language string) (string, error) {
 }
 
 // there may be a nice way to extract this logic out but for now it doesn't matter
-func GetTime(o JSON, key string) (time.Time, error) {
+func GetTime(o Dict, key string) (time.Time, error) {
 	if value, err := Get[string](o, key); err != nil {
 		return time.Time{}, err
 	} else {
 		return time.Parse(time.RFC3339, value)
 	}
 }
-func GetURL(o JSON, key string) (*url.URL, error) {
+func GetURL(o Dict, key string) (*url.URL, error) {
 	if value, err := Get[string](o, key); err != nil {
 		return nil, err
 	} else {

@@ -13,7 +13,7 @@ import (
 var client = &http.Client{}
 //var cache = TODO
 
-func Fetch(url *url.URL) (Object, error) {
+func Fetch(url *url.URL) (Content, error) {
 	const requiredContentType = `application/ld+json; profile="https://www.w3.org/ns/activitystreams"`
 	const optionalContentType = "application/activity+json"
 

@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-type Actor map[string]any
+type Actor Dict
 
 func (a Actor) Kind() (string, error) {
 	kind, err := Get[string](a, "type")
@@ -27,6 +27,13 @@ func (a Actor) InlineName() (string, error) {
 	id, err := a.Identifier()
 	if err != nil {
 		return "", err
+	}
+	kind, err := a.Kind()
+	if err != nil {
+		return "", err
+	}
+	if kind != "person" {
+		return fmt.Sprintf("%s (%s, %s)", name, id.Hostname(), kind), nil
 	}
 	return fmt.Sprintf("%s (%s)", name, id.Hostname()), nil
 }

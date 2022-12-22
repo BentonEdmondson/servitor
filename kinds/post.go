@@ -8,7 +8,7 @@ import (
 	"fmt"
 )
 
-type Post map[string]any
+type Post Dict
 
 // TODO: make the Post references *Post because why not
 
@@ -48,6 +48,8 @@ func (p Post) Category() string {
 	return "post"
 }
 
+// TODO: this should return errors so I can add warnings to
+// describe problems
 func (p Post) Creators() []Actor {
 	// TODO: this line needs an existence check
 	attributedTo, ok := p["attributedTo"]
@@ -67,7 +69,7 @@ func (p Post) Creators() []Actor {
 
 	for _, el := range attributions {
 		switch narrowed := el.(type) {
-		case JSON:
+		case Dict:
 			source, err := p.Identifier()
 			if err != nil { continue }
 			resolved, err := Construct(narrowed, source)

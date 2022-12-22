@@ -5,13 +5,6 @@ import (
 	"net/url"
 )
 
-type Object interface {
-	String() string
-	Kind() (string, error)
-	Identifier() (*url.URL, error)
-	Category() string
-}
-
 // TODO, add a verbose debugging output mode
 // to debug problems that arise with this thing
 // looping too much and whatnot
@@ -19,7 +12,7 @@ type Object interface {
 // `unstructured` is the JSON to construct from,
 // source is where the JSON was received from,
 // used to ensure the reponse is trustworthy
-func Construct(unstructured JSON, source *url.URL) (Object, error) {
+func Construct(unstructured Dict, source *url.URL) (Content, error) {
 	kind, err := Get[string](unstructured, "type")
 	if err != nil {
 		return nil, err
