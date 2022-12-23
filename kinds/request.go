@@ -34,8 +34,11 @@ func Fetch(url *url.URL) (Content, error) {
 		return nil, err
 	}
 
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+
 	if resp.StatusCode != 200 {
-		return nil, errors.New("The server returned a status code of " + string(resp.StatusCode))
+		return nil, errors.New("The server returned a status code of " + resp.Status)
 	}
 
 	if contentType := resp.Header.Get("Content-Type"); contentType == "" {
@@ -44,8 +47,6 @@ func Fetch(url *url.URL) (Content, error) {
 		return nil, errors.New("The server responded with the invalid content type of " + contentType)
 	}
 
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
 	var unstructured map[string]any
 	if err := json.Unmarshal(body, &unstructured); err != nil {
 		return nil, err

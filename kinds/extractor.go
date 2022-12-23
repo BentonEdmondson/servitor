@@ -63,24 +63,26 @@ func GetURL(o Dict, key string) (*url.URL, error) {
 	}
 }
 
-func GetContent[T Content](d Dict, key string) ([]T, error) {
-
-	value, ok := d["attributedTo"]
-	if !ok {
-		return []T{}, nil
-	}
-
-	list := []any{}
+// TODO: need to filter out the 3 public cases.
+/*
+	`GetContent`
+	For a given key, return all values of type T.
+	Strings are interpreted as URLs and fetched.
+	The Public address representations mentioned
+	in §5.6 are ignored.
 	
-	if valueList, isList := value.([]any); isList {
-		list = valueList
-	} else {
-		list = []any{value}
+	Used for `Post.attributedTo` and `Post.inReplyTo`,
+	for instance.
+*/
+func GetContent[T Content](d Dict, key string) ([]T, error) {
+	values, err := GetList(d, key)
+	if err != nil {
+		return nil, err
 	}
 	
 	output := []T{}
 	
-	for _, el := range list {
+	for _, el := range values {
 		switch narrowed := el.(type) {
 		case Dict:
 			// TODO: if source is absent, must refetch
@@ -92,6 +94,9 @@ func GetContent[T Content](d Dict, key string) ([]T, error) {
 			if !isT { continue }
 			output = append(output, asT)
 		case string:
+			// §5.6
+			if narrowed == "https://www.w3.org/ns/activitystreams#Public" ||
+				narrowed == "as:Public" || narrowed == "Public" { continue }
 			url, err := url.Parse(narrowed)
 			if err != nil { continue }
 			object, err := Fetch(url)
@@ -104,5 +109,113 @@ func GetContent[T Content](d Dict, key string) ([]T, error) {
 	}
 
 	return output, nil
+}
+
+/*
+	`GetList`
+	For a given key, return the value if it is a
+	slice, if not, make it a slice of size 1
+*/
+func GetList(d Dict, key string) ([]any, error) {
+	value, err := Get[any](d, key)
+	if err != nil { return []any{}, err }
+	if asList, isList := value.([]any); isList {
+		return asList, nil
+	} else {
+		return []any{value}, nil
+	}
+}
+
+/*
+	`GetLinks`
+	Returns a list
+	of Links. Strings are interpreted as Links and
+	are not fetched. If d.content is absent, d.mediaType
+	is interpreted as applying to these strings.
+	Non-string, non-Link elements are ignored.
+
+	Used exclusively for `Post.url`.
+*/
+func GetLinks(d Dict, key string) ([]Link, error) {
+	values, err := GetList(d, "url")
+	if err != nil {
+		return nil, err
+	}
 	
+	output := []Link{}
+
+	// if content is absent and mediaType is present,
+	// mediaType applies to the Links
+	// name applies to the Links
+	// nil/null represents absence
+	var defaultMediaType any // (string | nil)
+	mediaType, mediaTypeErr := Get[string](d, "mediaType")
+	_, contentErr := GetNatural(d, "content", "en")
+	if mediaTypeErr != nil || contentErr == nil {
+		defaultMediaType = nil
+	} else { defaultMediaType = mediaType }
+	var defaultName any // (string | nil)
+	if name, nameErr := Get[string](d, "name"); nameErr != nil {
+		defaultName = name
+	} else { defaultName = nil }
+
+	for _, el := range values {
+		switch narrowed := el.(type) {
+		case string:
+			output = append(output, Link{
+				"type": "Link",
+				"href": narrowed,
+				"name": defaultName,
+				"mediaType": defaultMediaType,
+			})
+		case Dict:
+			source, err := GetURL(d, "id")
+			constructed, err := Construct(narrowed, source)
+			if err != nil { continue }
+			switch narrowedConstructed := constructed.(type) {
+			case Link:
+				output = append(output, narrowedConstructed)
+			// TODO: ignore this case
+			case Post:
+				if postLink, err := narrowedConstructed.Link(); err != nil {
+					output = append(output, postLink)
+				} else { continue }
+			default: continue
+			}
+		default: continue
+		}
+	}
+
+	return output, nil
+}
+
+/*
+	`GetAsLinks`
+	Similar to `GetLinks`, but converts Posts
+	to Links instead of ignoring them, and treats
+	strings as URLs (not Links) and fetches them.
+
+	Used for `Post.attachment`, `Actor.icon`, etc.
+*/
+func GetAsLinks(d Dict, key string) ([]Link, error) {
+	values, err := GetContent[Content](d, key)
+	if err != nil {
+		return []Link{}, err
+	}
+
+	output := []Link{}
+
+	for _, el := range values {
+		switch narrowed := el.(type) {
+		case Link:
+			output = append(output, narrowed)
+		case Post:
+			if link, err := narrowed.Link(); err == nil {
+				output = append(output, link)
+			} else { continue }
+		default: continue
+		}
+	}
+
+	return output, nil
 }

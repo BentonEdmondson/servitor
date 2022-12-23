@@ -6,6 +6,7 @@ import (
 	"time"
 	"mimicry/style"
 	"fmt"
+	"errors"
 )
 
 type Post Dict
@@ -29,7 +30,11 @@ func (p Post) Body() (string, error) {
 
 func (p Post) BodyPreview() (string, error) {
 	body, err := p.Body()
-	return fmt.Sprintf("%s…", string([]rune(body)[:280])), err
+	if len(body) > 280*2 { // pretty much arbitrary length >280
+		return fmt.Sprintf("%s…", string([]rune(body)[:280])), err
+	} else {
+		return body, err
+	}
 }
 
 func (p Post) Identifier() (*url.URL, error) {
@@ -52,7 +57,32 @@ func (p Post) Creators() ([]Actor, error) {
 	return GetContent[Actor](p, "attributedTo")
 }
 
-func (p Post) String() string {
+// func (p Post) bestLink() (Link, error) {
+
+// }
+
+func (p Post) Link() (Link, error) {
+	kind, err := p.Kind()
+	if err != nil {
+		return nil, err
+	}
+	switch kind {
+	// case "audio", "image", "video":
+	// 	return GetBestLink(p)
+	case "article", "document", "note", "page":
+		if links, err := GetLinks(p, "url"); err != nil {
+			return nil, err
+		} else if len(links) == 0 {
+			return nil, err
+		} else {
+			return links[0], nil
+		}
+	default:
+		return nil, errors.New("Link extraction is not supported for type " + kind)
+	}
+}
+
+func (p Post) String() (string, error) {
 	output := ""
 
 	if title, err := p.Title(); err == nil {
@@ -79,5 +109,12 @@ func (p Post) String() string {
 		}
 	}
 
-	return strings.TrimSpace(output)
+	if link, err := p.Link(); err == nil {
+		if linkStr, err := link.String(); err == nil {
+			output += "\n"
+			output += linkStr
+		}
+	}
+
+	return strings.TrimSpace(output), nil
 }

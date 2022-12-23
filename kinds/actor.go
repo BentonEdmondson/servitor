@@ -51,7 +51,7 @@ func (a Actor) Bio() (string, error) {
 	return strings.TrimSpace(bio), err
 }
 
-func (a Actor) String() string {
+func (a Actor) String() (string, error) {
 	output := ""
 
 	name, err := a.InlineName()
@@ -68,5 +68,5 @@ func (a Actor) String() string {
 		output += "\n"
 		output += bio
 	}
-	return output
+	return output, nil
 }

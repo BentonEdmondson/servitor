@@ -30,5 +30,6 @@ func main() {
 		return
 	}
 
-	fmt.Println(object.String())
+	str, _ := object.String()
+	fmt.Println(str)
 }

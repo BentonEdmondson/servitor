@@ -18,32 +18,24 @@ func Construct(unstructured Dict, source *url.URL) (Content, error) {
 		return nil, err
 	}
 
+	// this requirement should be removed, and the below check
+	// should be checking if only type or only type and id
+	// are present on the element
+	hasIdentifier := true
 	id, err := GetURL(unstructured, "id")
 	if err != nil {
-		return nil, err
+		hasIdentifier = false
 	}
 
 	// if the JSON came from a source (e.g. inline in another collection), with a
 	// different hostname than its ID, refetch
 	// if the JSON only has two keys (type and id), refetch
-	if source != nil && source.Hostname() != id.Hostname() || len(unstructured) <= 2 {
+	if (source != nil && source.Hostname() != id.Hostname()) || (len(unstructured) <= 2 && hasIdentifier) {
 		return Fetch(id)
 	}
 
 	switch kind {
-	case "Article":
-		fallthrough
-	case "Audio":
-		fallthrough
-	case "Document":
-		fallthrough
-	case "Image":
-		fallthrough
-	case "Note":
-		fallthrough
-	case "Page":
-		fallthrough
-	case "Video":
+	case "Article", "Audio", "Document", "Image", "Note", "Page", "Video":
 		// TODO: figure out the way to do this directly
 		post := Post{}
 		post = unstructured
@@ -60,22 +52,16 @@ func Construct(unstructured Dict, source *url.URL) (Content, error) {
 	// case "Question":
 	// 	return Activity{unstructured}, nil
 
-	case "Application":
-		fallthrough
-	case "Group":
-		fallthrough
-	case "Organization":
-		fallthrough
-	case "Person":
-		fallthrough
-	case "Service":
+	case "Application", "Group", "Organization", "Person", "Service":
 		// TODO: nicer way to do this?
 		actor := Actor{}
 		actor = unstructured
 		return actor, nil
 
-	// case "Link":
-	// 	return Link{unstructured}, nil
+	case "Link":
+		link := Link{}
+		link = unstructured
+		return link, nil
 
 	// case "Collection":
 	// 	fallthrough
