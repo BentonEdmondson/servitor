@@ -30,8 +30,10 @@ func Construct(unstructured Dict, source *url.URL) (Content, error) {
 	// if the JSON came from a source (e.g. inline in another collection), with a
 	// different hostname than its ID, refetch
 	// if the JSON only has two keys (type and id), refetch
-	if (source != nil && source.Hostname() != id.Hostname()) || (len(unstructured) <= 2 && hasIdentifier) {
-		return Fetch(id)
+	if (source != nil && id != nil) {
+		if (source.Hostname() != id.Hostname()) || (len(unstructured) <= 2 && hasIdentifier) {
+			return Fetch(id)
+		}
 	}
 
 	switch kind {

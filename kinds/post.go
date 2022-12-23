@@ -30,7 +30,8 @@ func (p Post) Body() (string, error) {
 
 func (p Post) BodyPreview() (string, error) {
 	body, err := p.Body()
-	if len(body) > 280*2 { // pretty much arbitrary length >280
+	// probably should convert to runes and just work with that
+	if len(body) > 280*2 { // this is a bug because len counts bytes whereas later I work based on runes
 		return fmt.Sprintf("%s…", string([]rune(body)[:280])), err
 	} else {
 		return body, err
@@ -55,6 +56,10 @@ func (p Post) Category() string {
 
 func (p Post) Creators() ([]Actor, error) {
 	return GetContent[Actor](p, "attributedTo")
+}
+
+func (p Post) Attachments() ([]Link, error) {
+	return GetAsLinks(p, "attachment")
 }
 
 // func (p Post) bestLink() (Link, error) {
@@ -113,6 +118,17 @@ func (p Post) String() (string, error) {
 		if linkStr, err := link.String(); err == nil {
 			output += "\n"
 			output += linkStr
+		}
+	}
+
+	if attachments, err := p.Attachments(); err == nil {
+		output += "\nAttachments:\n"
+		for _, attachment := range attachments {
+			if attachmentStr, err := attachment.String(); err == nil {
+				output += attachmentStr + "\n"
+			} else {
+				continue
+			}
 		}
 	}
 

@@ -136,6 +136,9 @@ func GetList(d Dict, key string) ([]any, error) {
 
 	Used exclusively for `Post.url`.
 */
+// TODO: for simplicity, make this a method of Post,
+// it is easier to conceptualize when it works only on
+// Posts, plus I can use my other post methods
 func GetLinks(d Dict, key string) ([]Link, error) {
 	values, err := GetList(d, "url")
 	if err != nil {
@@ -155,9 +158,9 @@ func GetLinks(d Dict, key string) ([]Link, error) {
 		defaultMediaType = nil
 	} else { defaultMediaType = mediaType }
 	var defaultName any // (string | nil)
-	if name, nameErr := Get[string](d, "name"); nameErr != nil {
-		defaultName = name
-	} else { defaultName = nil }
+	if name, nameErr := GetNatural(d, "name", "en"); nameErr != nil {
+		defaultName = nil
+	} else { defaultName = name }
 
 	for _, el := range values {
 		switch narrowed := el.(type) {
