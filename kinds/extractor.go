@@ -7,7 +7,7 @@ import (
 )
 
 // TODO throughout this file: attach the problematic object to the error
-
+// make these all methods on Dictionary
 type Dict = map[string]any
 
 func Get[T any](o Dict, key string) (T, error) {
@@ -114,7 +114,7 @@ func GetContent[T Content](d Dict, key string) ([]T, error) {
 /*
 	`GetList`
 	For a given key, return the value if it is a
-	slice, if not, make it a slice of size 1
+	slice, if not, put it in a slice and return that.
 */
 func GetList(d Dict, key string) ([]any, error) {
 	value, err := Get[any](d, key)
@@ -127,20 +127,20 @@ func GetList(d Dict, key string) ([]any, error) {
 }
 
 /*
-	`GetLinks`
+	`GetLinksStrict`
 	Returns a list
 	of Links. Strings are interpreted as Links and
 	are not fetched. If d.content is absent, d.mediaType
 	is interpreted as applying to these strings.
 	Non-string, non-Link elements are ignored.
 
-	Used exclusively for `Post.url`.
+	Used for `Post.url`.
 */
 // TODO: for simplicity, make this a method of Post,
 // it is easier to conceptualize when it works only on
 // Posts, plus I can use my other post methods
-func GetLinks(d Dict, key string) ([]Link, error) {
-	values, err := GetList(d, "url")
+func GetLinksStrict(d Dict, key string) ([]Link, error) {
+	values, err := GetList(d, key)
 	if err != nil {
 		return nil, err
 	}
@@ -193,14 +193,14 @@ func GetLinks(d Dict, key string) ([]Link, error) {
 }
 
 /*
-	`GetAsLinks`
-	Similar to `GetLinks`, but converts Posts
+	`GetLinksLenient`
+	Similar to `GetLinksStrict`, but converts Posts
 	to Links instead of ignoring them, and treats
 	strings as URLs (not Links) and fetches them.
 
 	Used for `Post.attachment`, `Actor.icon`, etc.
 */
-func GetAsLinks(d Dict, key string) ([]Link, error) {
+func GetLinksLenient(d Dict, key string) ([]Link, error) {
 	values, err := GetContent[Content](d, key)
 	if err != nil {
 		return []Link{}, err

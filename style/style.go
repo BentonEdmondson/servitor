@@ -4,6 +4,13 @@ import (
 	"fmt"
 )
 
+/*
+	To, e.g., bold, prepend the bold character,
+	then substitute all resets with `${reset}${bold}`
+	to force rebold after all resets, to make sure. Might
+	be complex with layering
+*/
+
 // const (
 // 	Bold = 
 // )

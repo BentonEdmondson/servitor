@@ -59,7 +59,7 @@ func (p Post) Creators() ([]Actor, error) {
 }
 
 func (p Post) Attachments() ([]Link, error) {
-	return GetAsLinks(p, "attachment")
+	return GetLinksLenient(p, "attachment")
 }
 
 // func (p Post) bestLink() (Link, error) {
@@ -71,17 +71,17 @@ func (p Post) Link() (Link, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	links, err := GetLinksStrict(p, "url")
+	if err != nil {
+		return nil, err
+	}
+
 	switch kind {
-	// case "audio", "image", "video":
-	// 	return GetBestLink(p)
+	case "audio", "image", "video":
+		return SelectBestLink(links, kind)
 	case "article", "document", "note", "page":
-		if links, err := GetLinks(p, "url"); err != nil {
-			return nil, err
-		} else if len(links) == 0 {
-			return nil, err
-		} else {
-			return links[0], nil
-		}
+		return SelectFirstLink(links)
 	default:
 		return nil, errors.New("Link extraction is not supported for type " + kind)
 	}

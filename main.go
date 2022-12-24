@@ -8,6 +8,10 @@ import (
 	"os"
 )
 
+// TODO: when returning errors, use zero value for return
+// also change all error messages to using sprintf-style
+// formatting, all lowercase, and no punctuation
+
 func main() {
 	link := os.Args[len(os.Args)-1]
 	command := os.Args[1]
