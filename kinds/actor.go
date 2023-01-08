@@ -32,10 +32,11 @@ func (a Actor) InlineName() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if kind != "person" {
-		return fmt.Sprintf("%s (%s, %s)", name, id.Hostname(), kind), nil
-	}
-	return fmt.Sprintf("%s (%s)", name, id.Hostname()), nil
+	// if kind != "person" {
+	// 	return fmt.Sprintf("%s (%s, %s)", name, id.Hostname(), kind), nil
+	// }
+	// return fmt.Sprintf("%s (%s)", name, id.Hostname()), nil
+	return fmt.Sprintf("%s (%s, %s)", name, id.Hostname(), kind), nil
 }
 
 func (a Actor) Category() string {
@@ -57,11 +58,6 @@ func (a Actor) String() (string, error) {
 	name, err := a.InlineName()
 	if err == nil {
 		output += style.Bold(name)
-	}
-	kind, err := a.Kind()
-	if err == nil {
-		output += " "
-		output += kind
 	}
 	bio, err := a.Bio()
 	if err == nil {

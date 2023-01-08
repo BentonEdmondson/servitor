@@ -72,6 +72,7 @@ func (l Link) String() (string, error) {
 	return output, nil
 }
 
+// TODO: must test when list only has 1 link (probably works)
 func SelectBestLink(links []Link, supertype string) (Link, error) {
 	if len(links) == 0 {
 		return nil, errors.New("Can't select best link of type " + supertype + "/* from an empty list")
