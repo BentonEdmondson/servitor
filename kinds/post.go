@@ -7,10 +7,13 @@ import (
 	"mimicry/style"
 	"fmt"
 	"errors"
+	"mimicry/render"
 )
 
 type Post Dict
 
+// TODO: go through and remove all the trims, they
+// make things less predictable
 // TODO: make the Post references *Post because why not
 
 func (p Post) Kind() (string, error) {
@@ -25,7 +28,11 @@ func (p Post) Title() (string, error) {
 
 func (p Post) Body() (string, error) {
 	body, err := GetNatural(p, "content", "en")
-	return strings.TrimSpace(body), err
+	mediaType, err := Get[string](p, "mediaType")
+	if err != nil {
+		mediaType = "text/html"
+	}
+	return render.Render(body, mediaType)
 }
 
 func (p Post) BodyPreview() (string, error) {
@@ -96,7 +103,7 @@ func (p Post) String() (string, error) {
 	}
 
 
-	if body, err := p.BodyPreview(); err == nil {
+	if body, err := p.Body(); err == nil {
 		output += body
 		output += "\n"
 	}
