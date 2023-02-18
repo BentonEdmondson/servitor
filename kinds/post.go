@@ -94,6 +94,7 @@ func (p Post) Link() (Link, error) {
 	}
 }
 
+// TODO: errors in here should potentially trigger errors!
 func (p Post) String() (string, error) {
 	output := ""
 
@@ -101,7 +102,6 @@ func (p Post) String() (string, error) {
 		output += style.Bold(title)
 		output += "\n"
 	}
-
 
 	if body, err := p.Body(); err == nil {
 		output += body

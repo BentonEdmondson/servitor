@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"mimicry/style"
 	"fmt"
+	"mimicry/render"
 )
 
 type Actor Dict
@@ -48,8 +49,12 @@ func (a Actor) Identifier() (*url.URL, error) {
 }
 
 func (a Actor) Bio() (string, error) {
-	bio, err := GetNatural(a, "summary", "en")
-	return strings.TrimSpace(bio), err
+	body, err := GetNatural(a, "summary", "en")
+	mediaType, err := Get[string](a, "mediaType")
+	if err != nil {
+		mediaType = "text/html"
+	}
+	return render.Render(body, mediaType)
 }
 
 func (a Actor) String() (string, error) {

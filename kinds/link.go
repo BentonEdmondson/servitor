@@ -38,6 +38,9 @@ func (l Link) URL() (*url.URL, error) {
 
 func (l Link) Alt() (string, error) {
 	alt, err := Get[string](l, "name")
+	if alt == "" || err != nil {
+		alt, err = Get[string](l, "href")
+	}
 	return strings.TrimSpace(alt), err
 }
 
