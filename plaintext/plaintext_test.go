@@ -3,7 +3,7 @@ package plaintext
 import (
 	"testing"
 	"mimicry/style"
-	"mimicry/utils"
+	"mimicry/util"
 )
 
 func TestBasic(t *testing.T) {
@@ -25,5 +25,5 @@ Note the warning in <` +
 		style.Link("http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING") +
 		`>.`
 
-	utils.AssertEqual(expected, output, t)
+	util.AssertEqual(expected, output, t)
 }

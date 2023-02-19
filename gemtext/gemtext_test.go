@@ -3,7 +3,7 @@ package gemtext
 import (
 	"testing"
 	"mimicry/style"
-	"mimicry/utils"
+	"mimicry/util"
 )
 
 func TestBasic(t *testing.T) {
@@ -34,5 +34,5 @@ func TestBasic(t *testing.T) {
 		style.LinkBlock("http://example.org/") + "\n\n" +
 		style.CodeBlock("code block\nhere")
 
-	utils.AssertEqual(expected, output, t)
+	util.AssertEqual(expected, output, t)
 }

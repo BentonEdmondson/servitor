@@ -3,7 +3,7 @@ package hypertext
 import (
 	"testing"
 	"mimicry/style"
-	"mimicry/utils"
+	"mimicry/util"
 )
 
 func TestMergeText(t *testing.T) {
@@ -11,25 +11,25 @@ func TestMergeText(t *testing.T) {
 	rhs0 := "back"
 	output0 := mergeText(lhs0, rhs0)
 	expected0 := "frontback"
-	utils.AssertEqual(expected0, output0, t)
+	util.AssertEqual(expected0, output0, t)
 
 	lhs1 := "front     "
 	rhs1 := "   back"
 	output1 := mergeText(lhs1, rhs1)
 	expected1 := "front back"
-	utils.AssertEqual(expected1, output1, t)
+	util.AssertEqual(expected1, output1, t)
 
 	lhs2 := "front     "
 	rhs2 := " \n  back"
 	output2 := mergeText(lhs2, rhs2)
 	expected2 := "front\nback"
-	utils.AssertEqual(expected2, output2, t)
+	util.AssertEqual(expected2, output2, t)
 
 	lhs3 := "front    \n\n\n "
 	rhs3 := " \n  back"
 	output3 := mergeText(lhs3, rhs3)
 	expected3 := "front\n\nback"
-	utils.AssertEqual(expected3, output3, t)
+	util.AssertEqual(expected3, output3, t)
 }
 
 func TestStyles(t *testing.T) {
@@ -44,7 +44,7 @@ func TestStyles(t *testing.T) {
 		style.Underline("u") +
 		style.Highlight("mark")
 
-	utils.AssertEqual(expected, output, t)
+	util.AssertEqual(expected, output, t)
 }
 
 func TestSurroundingBlocks(t *testing.T) {
@@ -58,7 +58,7 @@ func TestSurroundingBlocks(t *testing.T) {
 in ` + style.Highlight("the") + ` middle
 
 last`
-	utils.AssertEqual(expected, output, t)
+	util.AssertEqual(expected, output, t)
 }
 
 func TestAdjacentBlocks(t *testing.T) {
@@ -70,7 +70,7 @@ func TestAdjacentBlocks(t *testing.T) {
 	expected := `first
 
 second`
-	utils.AssertEqual(expected, output, t)
+	util.AssertEqual(expected, output, t)
 }
 
 func TestPoetry(t *testing.T) {
@@ -84,7 +84,7 @@ at those annoying birds
 
 and that they heard`
 
-	utils.AssertEqual(expected, output, t)
+	util.AssertEqual(expected, output, t)
 }
 
 func TestPreservation(t *testing.T) {
@@ -99,7 +99,7 @@ func TestPreservation(t *testing.T) {
 
 
  far down`)
-	utils.AssertEqual(expected, output, t)
+	util.AssertEqual(expected, output, t)
 }
 
 func TestNestedBlocks(t *testing.T) {
@@ -115,5 +115,5 @@ func TestNestedBlocks(t *testing.T) {
 	expected := `Once a timid child
 
 ` + style.LinkBlock("https://i.snap.as/P8qpdMbM.jpg")
-	utils.AssertEqual(expected, output, t)
+	util.AssertEqual(expected, output, t)
 }
