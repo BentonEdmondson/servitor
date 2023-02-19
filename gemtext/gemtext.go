@@ -12,6 +12,10 @@ import (
 	https://gemini.circumlunar.space/docs/specification.html
 */
 
+// TODO: be careful about collapsing whitespace,
+// e.g. block quotes should probably be able to start
+// with tabs
+
 func Render(text string) (string, error) {
 	lines := strings.Split(text, "\n")
 	result := ""
@@ -42,8 +46,25 @@ func Render(text string) (string, error) {
 		case strings.HasPrefix(line, "#"):
 			result += style.Header(strings.TrimLeft(line[1:], " \t"), 1) + "\n"
 		case strings.HasPrefix(line, ">"):
-			result += style.QuoteBlock(strings.TrimLeft(line[1:], " \t")) + "\n"
+			/*
+				Don't just TrimLeft all whitespace, because indents should be possible,
+				but at the same time, most people use "> " before their text, so trim
+				a single space if it is present. This is not in the spec but is used
+				in Amfora and presumably others:
+				https://github.com/makeworld-the-better-one/amfora/blob/0b3f874ef19f652fc587ffa80aa6fd08103f892c/renderer/renderer.go#L295
+
+				This could be annoying if someone writes
+					>first line
+					>  second line indented
+				instead of
+					> first line
+					>   second line indented
+			*/
+			result += style.QuoteBlock(strings.TrimPrefix(line[1:], " ")) + "\n"
 		case strings.HasPrefix(line, "* "):
+			/*
+				The spec says nothing about optional whitespace, so don't trim at all.
+			*/
 			result += style.Bullet(line[2:]) + "\n"
 		case strings.HasPrefix(line, "=>"):
 			rendered, err := renderLink(strings.TrimLeft(line[2:], " \t"))
@@ -65,6 +86,10 @@ func Render(text string) (string, error) {
 }
 
 func renderLink(text string) (string, error) {
+	/*
+		Regexp to split the line into the url and the optional
+		alt text, while also removing the optional whitespace
+	*/
 	r := regexp.MustCompile(`^(.*?)(?:[ \t]+(.*))?$`)
 	matches := r.FindStringSubmatch(text)
 	url := matches[1]
@@ -74,9 +99,8 @@ func renderLink(text string) (string, error) {
 		alt = url
 	}
 
-	// another option here is to: return text
 	if alt == "" {
-		return "", errors.New("Link line with no content found in gemtext")
+		return text, nil
 	}
 
 	return style.LinkBlock(alt), nil
