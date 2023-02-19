@@ -4,7 +4,6 @@ import (
 	"mimicry/style"
 	"strings"
 	"regexp"
-	"errors"
 )
 
 /*
