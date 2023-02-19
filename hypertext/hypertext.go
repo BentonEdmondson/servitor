@@ -58,11 +58,15 @@ func serializeList(nodes []*html.Node) (string, error) {
 		  between.
 */
 func mergeText(lhs string, rhs string) string {
-	lhsTrimmed := strings.TrimRight(lhs, " \n")
-	rhsTrimmed := strings.TrimLeft(rhs, " \n")
-	lhsWhitespace := lhs[len(lhsTrimmed):]
-	rhsWhitespace := rhs[:len(rhs)-len(rhsTrimmed)]
-	whitespace := lhsWhitespace + rhsWhitespace
+	trimRight := regexp.MustCompile(`(?s)^(.*?)([ \n]*)$`)
+	lhsMatches := trimRight.FindStringSubmatch(lhs)
+	lhsTrimmed := lhsMatches[1]
+
+	trimLeft := regexp.MustCompile(`(?s)^([ \n]*)(.*)$`)
+	rhsMatches := trimLeft.FindStringSubmatch(rhs)
+	rhsTrimmed := rhsMatches[2]
+
+	whitespace := lhsMatches[2] + rhsMatches[1]
 
 	if whitespace == "" {
 		return lhsTrimmed + rhsTrimmed
