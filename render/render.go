@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"mimicry/hypertext"
+	"mimicry/plaintext"
 )
 
 // TODO: need to actually parse mediaType, not use `Contains`
@@ -12,7 +13,7 @@ func Render(text string, mediaType string) (string, error) {
 	fmt.Println("started render")
 	switch {
 	case strings.Contains(mediaType, "text/plain"): 
-		return text, nil
+		return plaintext.Render(text)
 	case strings.Contains(mediaType, "text/html"):
 		return hypertext.Render(text)
 	default:
