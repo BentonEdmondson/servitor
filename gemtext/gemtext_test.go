@@ -3,13 +3,8 @@ package gemtext
 import (
 	"testing"
 	"mimicry/style"
+	"mimicry/utils"
 )
-
-func assertEqual(expected string, output string, t *testing.T) {
-	if expected != output {
-		t.Fatalf("Expected `%s` not `%s`\n", expected, output)
-	}
-}
 
 func TestBasic(t *testing.T) {
 	input := `> blockquote
@@ -39,5 +34,5 @@ func TestBasic(t *testing.T) {
 		style.LinkBlock("http://example.org/") + "\n\n" +
 		style.CodeBlock("code block\nhere")
 
-	assertEqual(expected, output, t)
+	utils.AssertEqual(expected, output, t)
 }

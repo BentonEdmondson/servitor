@@ -3,13 +3,8 @@ package plaintext
 import (
 	"testing"
 	"mimicry/style"
+	"mimicry/utils"
 )
-
-func assertEqual(expected string, output string, t *testing.T) {
-	if expected != output {
-		t.Fatalf("Expected `%s` not `%s`\n", expected, output)
-	}
-}
 
 func TestBasic(t *testing.T) {
 	input := `Yes, Jim, I found it under "http://www.w3.org/Addressing/",
@@ -30,5 +25,5 @@ Note the warning in <` +
 		style.Link("http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING") +
 		`>.`
 
-	assertEqual(expected, output, t)
+	utils.AssertEqual(expected, output, t)
 }
