@@ -50,6 +50,8 @@ Future recommendation: add a `nameMediaType` field that applies to `name` so it 
 
 Use both of the `Accept` headers, some sites only respond to `application/activity+json` (PixelFed).
 
+In the ActivityPub JSON, assume media type has no parameters and no whitespace.
+
 ## TODO
 
 Document the reasoning for treating everything as JSON instead of JSON-LD.
