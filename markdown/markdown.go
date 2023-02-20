@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-func Render(text string) (string, error) {
-	renderer := goldmark.New(goldmark.WithExtensions(extension.GFM))
+var renderer = goldmark.New(goldmark.WithExtensions(extension.GFM))
 
+func Render(text string) (string, error) {
 	var buf bytes.Buffer
 	if err := renderer.Convert([]byte(text), &buf); err != nil {
 		return "", nil
