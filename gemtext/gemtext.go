@@ -81,7 +81,7 @@ func Render(text string) (string, error) {
 		result += style.CodeBlock(strings.TrimSuffix(preformattedBuffer, "\n")) + "\n"
 	}
 
-	return strings.Trim(result, " \t\r\n"), nil
+	return strings.TrimSpace(result), nil
 }
 
 func renderLink(text string) (string, error) {

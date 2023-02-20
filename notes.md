@@ -56,6 +56,8 @@ In the ActivityPub JSON, assume media type has no parameters and no whitespace.
 
 Document the reasoning for treating everything as JSON instead of JSON-LD.
 
+Convert all tabs to spaces and reconfigure VSCode to not use tabs for golang.
+
 ## Minimal HTTPS
 
 After learning HTTP it feels like HTTP1.0 and HTTP3 have good niches. HTTP1.0 is super simple, `Connection: close` by default, so it is delimited by TCP close (which is fine for JSON). It has no chunking, so that isn't a problem. One TCP connection per request. On the other hand, HTTP3 is a binary protocol. (Amazing to think that the entire Web has been run off of a text-based protocol. No wonder everything breaks all the time.) Also, HTTP3 itself seems relatively lightweight because it looks like lower-level stuff is in QUIC instead of jammed in the HTTP headers.

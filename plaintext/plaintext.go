@@ -3,6 +3,7 @@ package plaintext
 import (
 	"regexp"
 	"mimicry/style"
+	"strings"
 )
 
 func Render(text string) (string, error) {
@@ -15,8 +16,8 @@ func Render(text string) (string, error) {
 			<hierarchy> is any of the characters listed in Appendix A:
 				A-Z a-z 0-9 - . ? # / @ : [ ] % _ ~ ! $ & ' ( ) * + , ; =
 	*/
-	
-	url := regexp.MustCompile(`[A-Za-z][A-Za-z0-9+\-.]*://[A-Za-z0-9.?#/@:%_~!$&'()*+,;=\[\]\-]+`)
 
-	return url.ReplaceAllStringFunc(text, style.Link), nil
+	url := regexp.MustCompile(`[A-Za-z][A-Za-z0-9+\-.]*://[A-Za-z0-9.?#/@:%_~!$&'()*+,;=\[\]\-]+`)
+	rendered := url.ReplaceAllStringFunc(text, style.Link)
+	return strings.TrimSpace(rendered), nil
 }

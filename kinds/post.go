@@ -106,6 +106,8 @@ func (p Post) String() (string, error) {
 	if body, err := p.Body(); err == nil {
 		output += body
 		output += "\n"
+	} else {
+		return "", err
 	}
 
 	if created, err := p.Created(); err == nil {

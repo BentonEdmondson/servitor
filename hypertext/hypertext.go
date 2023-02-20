@@ -9,10 +9,6 @@ import (
 	"errors"
 )
 
-// func Render(text string) string {
-// 	return "nothing"
-// }
-
 /* Terminal codes and control characters should already be escaped
    by this point */
 func Render(text string) (string, error) {
@@ -29,7 +25,7 @@ func Render(text string) (string, error) {
 		return "", err
 	}
 
-	return strings.Trim(serialized, " \n"), nil
+	return strings.TrimSpace(serialized), nil
 }
 
 func serializeList(nodes []*html.Node) (string, error) {
@@ -127,7 +123,7 @@ func renderNode(node *html.Node, preserveWhitespace bool) (string, error) {
 		return block(style.QuoteBlock(content)), nil
 	case "ul":
 		list, err := bulletedList(node, preserveWhitespace)
-		return block(list), err
+		return list, err
 	// case "ul":
 	// 	return numberedList(node), nil
 
@@ -196,7 +192,14 @@ func bulletedList(node *html.Node, preserveWhitespace bool) (string, error) {
 		}
 		output += "\n" + style.Bullet(result)
 	}
-	return block(output), nil
+
+	if node.Parent == nil {
+		return block(output), nil
+	} else if node.Parent.Data == "li" {
+		return output, nil
+	} else {
+		return block(output), nil
+	}
 }
 
 func getAttribute(name string, attributes []html.Attribute) string {
