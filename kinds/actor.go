@@ -54,7 +54,7 @@ func (a Actor) Bio() (string, error) {
 	if err != nil {
 		mediaType = "text/html"
 	}
-	return render.Render(body, mediaType)
+	return render.Render(body, mediaType, 80)
 }
 
 func (a Actor) String() (string, error) {

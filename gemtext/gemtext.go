@@ -15,7 +15,7 @@ import (
 // e.g. block quotes should probably be able to start
 // with tabs
 
-func Render(text string) (string, error) {
+func Render(text string, width int) (string, error) {
 	lines := strings.Split(text, "\n")
 	result := ""
 	preformattedMode := false

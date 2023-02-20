@@ -32,7 +32,7 @@ func (p Post) Body() (string, error) {
 	if err != nil {
 		mediaType = "text/html"
 	}
-	return render.Render(body, mediaType)
+	return render.Render(body, mediaType, 80)
 }
 
 func (p Post) BodyPreview() (string, error) {

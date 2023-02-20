@@ -13,7 +13,7 @@ func TestBasic(t *testing.T) {
 
 * Nested list
   * Nesting`
-	output, err := Render(input)
+	output, err := Render(input, 50)
 	if err != nil {
 		panic(err)
 	}

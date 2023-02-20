@@ -20,7 +20,7 @@ func TestBasic(t *testing.T) {
 =>http://example.org/
 
 ` + "```\ncode block\nhere\n```"
-	output, err := Render(input)
+	output, err := Render(input, 50)
 	if err != nil {
 		panic(err)
 	}

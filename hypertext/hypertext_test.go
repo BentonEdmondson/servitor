@@ -34,7 +34,7 @@ func TestMergeText(t *testing.T) {
 
 func TestStyles(t *testing.T) {
 	input := "<s>s</s><code>code</code><i>i</i><u>u</u><mark>mark</mark>"
-	output, err := Render(input)
+	output, err := Render(input, 50)
 	if err != nil {
 		panic(err)
 	}
@@ -49,7 +49,7 @@ func TestStyles(t *testing.T) {
 
 func TestSurroundingBlocks(t *testing.T) {
 	input := "<p>first</p>in \t<mark>the</mark> \rmiddle<p>last</p>"
-	output, err := Render(input)
+	output, err := Render(input, 50)
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +63,7 @@ last`
 
 func TestAdjacentBlocks(t *testing.T) {
 	input := "\t<p>first</p>\n\t<p>second</p>"
-	output, err := Render(input)
+	output, err := Render(input, 50)
 	if err != nil {
 		panic(err)
 	}
@@ -75,7 +75,7 @@ second`
 
 func TestPoetry(t *testing.T) {
 	input := "he shouted\t\ta few words<br>at those annoying birds<br><br>and that they heard"
-	output, err := Render(input)
+	output, err := Render(input, 50)
 	if err != nil {
 		panic(err)
 	}
@@ -89,7 +89,7 @@ and that they heard`
 
 func TestPreservation(t *testing.T) {
 	input := "<pre>tab\tand multi-space   \n\n\n\n\n far down</pre>"
-	output, err := Render(input)
+	output, err := Render(input, 50)
 	if err != nil {
 		panic(err)
 	}
@@ -108,7 +108,7 @@ func TestNestedBlocks(t *testing.T) {
 <p> </p>
 
 <p><img src="https://i.snap.as/P8qpdMbM.jpg" alt=""/></p>`
-	output, err := Render(input)	
+	output, err := Render(input, 50)	
 	if err != nil {
 		panic(err)
 	}
@@ -120,7 +120,7 @@ func TestNestedBlocks(t *testing.T) {
 
 func TestAdjacentLists(t *testing.T) {
 	input := `<ul><li>top list</li></ul><ul><li>bottom list</li></ul>`
-	output, err := Render(input)	
+	output, err := Render(input, 50)	
 	if err != nil {
 		panic(err)
 	}
@@ -131,7 +131,7 @@ func TestAdjacentLists(t *testing.T) {
 
 func TestNestedLists(t *testing.T) {
 	input := `<ul><li>top list<ul><li>nested</li></ul></li></ul>`
-	output, err := Render(input)	
+	output, err := Render(input, 50)	
 	if err != nil {
 		panic(err)
 	}
@@ -142,7 +142,7 @@ func TestNestedLists(t *testing.T) {
 
 func TestBlockInList(t *testing.T) {
 	input := `<ul><li>top list<p><ul><li>paragraph</li></ul></p></li></ul>`
-	output, err := Render(input)	
+	output, err := Render(input, 50)	
 	if err != nil {
 		panic(err)
 	}

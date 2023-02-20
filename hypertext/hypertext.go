@@ -11,7 +11,7 @@ import (
 
 /* Terminal codes and control characters should already be escaped
    by this point */
-func Render(text string) (string, error) {
+func Render(text string, width int) (string, error) {
 	nodes, err := html.ParseFragment(strings.NewReader(text), &html.Node{
 		Type: html.ElementNode,
 		Data: "body",

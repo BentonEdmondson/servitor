@@ -10,13 +10,13 @@ import (
 
 var renderer = goldmark.New(goldmark.WithExtensions(extension.GFM))
 
-func Render(text string) (string, error) {
+func Render(text string, width int) (string, error) {
 	var buf bytes.Buffer
 	if err := renderer.Convert([]byte(text), &buf); err != nil {
 		return "", nil
 	}
 	output := buf.String()
-	rendered, err := hypertext.Render(output)
+	rendered, err := hypertext.Render(output, width)
 	if err != nil {
 		return "", err
 	}
