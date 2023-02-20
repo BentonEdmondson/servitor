@@ -7,11 +7,12 @@ import (
 	"mimicry/gemtext"
 	"mimicry/markdown"
 	"strings"
+	"unicode"
 )
 
 // TODO: need to add a width parameter to all of this
 func Render(text string, mediaType string) (string, error) {
-	text = strings.Map(escapeControlCharacter, text)
+	text = strings.Map(dropControlCharacters, text)
 
 	switch {
 	case mediaType == "text/plain": 
@@ -27,9 +28,9 @@ func Render(text string, mediaType string) (string, error) {
 	}
 }
 
-func escapeControlCharacter(character rune) rune {
-	if character >= 0 && character <= 31 && character != '\t' && character != '\n' && character != '\r' {
-		return character + 0x2400
+func dropControlCharacters(character rune) rune {
+	if unicode.IsControl(character) && character != '\t' && character != '\n' {
+		return -1 // drop the character
 	}
 
 	return character
