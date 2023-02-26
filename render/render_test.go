@@ -13,7 +13,7 @@ func TestControlCharacterEscapes(t *testing.T) {
 		panic(err)
 	}
 
-	expected := "Yes, Jim, I\nfound it    under " +
+	expected := "Yes, Jim, I\nfound it\tunder " +
 		style.Link("http://www.w3.org/Addressing/")
 
 	util.AssertEqual(expected, output, t)

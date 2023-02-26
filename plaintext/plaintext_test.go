@@ -4,6 +4,7 @@ import (
 	"testing"
 	"mimicry/style"
 	"mimicry/util"
+	"mimicry/ansi"
 )
 
 func TestBasic(t *testing.T) {
@@ -15,13 +16,9 @@ Note the warning in <http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING
 		panic(err)
 	}
 
-	expected := "Yes, Jim, I found it under\n\"" +
-		style.Link("http://www.w3.org/Addressing/") +
-		"\",\nbut you can probably pick it up from\n<" +
-		style.Link("ftp://foo.example.com/rfc/") +
-		">.\nNote the warning in\n<" +
-		style.Link("http://www.ics.uci.edu/pub/ietf/uri/historical.ht\nml#WARNING") +
-		">."
+	expected := ansi.Wrap("Yes, Jim, I found it under \"" + style.Link("http://www.w3.org/Addressing/") +
+	"\",\nbut you can probably pick it up from <" + style.Link("ftp://foo.example.com/rfc/") +
+	">.\nNote the warning in <" + style.Link("http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING") + ">.", 50)
 
 	util.AssertEqual(expected, output, t)
 }

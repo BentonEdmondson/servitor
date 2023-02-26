@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"mimicry/style"
 	"strings"
-	"mimicry/util"
+	"mimicry/ansi"
 )
 
 func Render(text string, width int) (string, error) {
@@ -20,6 +20,6 @@ func Render(text string, width int) (string, error) {
 
 	url := regexp.MustCompile(`[A-Za-z][A-Za-z0-9+\-.]*://[A-Za-z0-9.?#/@:%_~!$&'()*+,;=\[\]\-]+`)
 	rendered := url.ReplaceAllStringFunc(text, style.Link)
-	wrapped := util.Wrap(rendered, width)
+	wrapped := ansi.Wrap(rendered, width)
 	return strings.TrimSpace(wrapped), nil
 }

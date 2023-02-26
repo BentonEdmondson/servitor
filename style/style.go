@@ -3,6 +3,7 @@ package style
 import (
 	"fmt"
 	"strings"
+	"mimicry/ansi"
 )
 
 // TODO: at some point I need to sanitize preexisting escape codes
@@ -10,21 +11,13 @@ import (
 // escape character
 
 func background(text string, r uint8, g uint8, b uint8) string {
-	setter := fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
-	resetter := "\x1b[49m"
-	text = strings.ReplaceAll(text, resetter, setter)
-	return fmt.Sprintf("%s%s%s", setter, text, resetter)
-}
-
-func extendBackground(text string) string {
-	return strings.ReplaceAll(text, "\n", "\x1b[K\n")
+	prefix := fmt.Sprintf("48;2;%d;%d;%d", r, g, b)
+	return ansi.Apply(text, prefix)
 }
 
 func foreground(text string, r uint8, g uint8, b uint8) string {
-	setter := fmt.Sprintf("\x1b[38;2;%d;%d;%dm", r, g, b)
-	resetter := "\x1b[39m"
-	newText := strings.ReplaceAll(text, resetter, setter)
-	return fmt.Sprintf("%s%s%s", setter, newText, resetter)
+	prefix := fmt.Sprintf("38;2;%d;%d;%d", r, g, b)
+	return ansi.Apply(text, prefix)
 }
 
 func display(text string, prependCode int, appendCode int) string {
@@ -35,19 +28,19 @@ func display(text string, prependCode int, appendCode int) string {
 // 22 removes bold and faint, faint is never used
 // so it does the job
 func Bold(text string) string {
-	return display(text, 1, 22)
+	return ansi.Apply(text, "1")
 }
 
 func Strikethrough(text string) string {
-	return display(text, 9, 29)
+	return ansi.Apply(text, "9")
 }
 
 func Underline(text string) string {
-	return display(text, 4, 24)
+	return ansi.Apply(text, "4")
 }
 
 func Italic(text string) string {
-	return display(text, 3, 23)
+	return ansi.Apply(text, "3")
 }
 
 func Code(text string) string {
@@ -55,7 +48,7 @@ func Code(text string) string {
 }
 
 func CodeBlock(text string) string {
-	return extendBackground(Code(text))
+	return Code(text)
 }
 
 func QuoteBlock(text string) string {
