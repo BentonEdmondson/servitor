@@ -78,7 +78,7 @@ func TestBasic(t *testing.T) {
 		// Complete example:
 		{
 			" This is a list: \n\n * foo\n * bar\n\n\n * foo  \nbar    ",
-			" This\nis a\nlist:\n\n * foo\n * bar\n\n\n * foo\nbar",
+			" This\nis a\nlist: \n\n * foo\n * bar\n\n\n * foo\nbar",
 			6,
 		},
 		// ANSI sequence codes don't affect length calculation:
@@ -92,6 +92,12 @@ func TestBasic(t *testing.T) {
 			"\x1B[38;2;249;38;114m(\x1B[0m\x1B[38;2;248;248;242mjust another test\x1B[38;2;249;38;114m)\x1B[0m",
 			"\x1B[38;2;249;38;114m(\x1B[0m\x1B[38;2;248;248;242mju\nst\nano\nthe\nr\ntes\nt\x1B[38;2;249;38;114m)\x1B[0m",
 			3,
+		},
+		// Many, many newlines shouldn't collapse:
+		{
+			"multi-space   \n\n\n\n\n far down",
+			"multi-sp\nace   \n\n\n\n\n far\ndown",
+			8,
 		},
 	}
 

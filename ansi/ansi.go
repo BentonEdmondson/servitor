@@ -7,7 +7,7 @@ import (
 )
 
 func expand(text string) [][]string {
-	r := regexp.MustCompile(`(?s)(?:(?:\x1b\[.*?m)*)(.)(?:\x1b\[0m)?`)
+	r := regexp.MustCompile(`(?s)((?:\x1b\[.*?m)*)(.)(?:\x1b\[0m)?`)
 	return r.FindAllStringSubmatch(text, -1)
 }
 
@@ -15,15 +15,15 @@ func Apply(text string, style string) string {
 	expanded := expand(text)
 	result := ""
 	for _, match := range expanded {
-		full := match[0]
-		letter := match[1]
+		prefix := match[1]
+		letter := match[2]
 
 		if letter == "\n" {
 			result += "\n"
 			continue
 		}
 
-		result += "\x1b[" + style + "m" + full + "\x1b[0m"
+		result += "\x1b[" + style + "m" + prefix + letter + "\x1b[0m"
 	}
 	return result
 }
@@ -38,7 +38,7 @@ func Indent(text string, prefix string, includeFirst bool) string {
 
 	for _, match := range expanded {
 		full := match[0]
-		letter := match[1]
+		letter := match[2]
 
 		if letter == "\n" {
 			result += "\n" + prefix
@@ -58,7 +58,7 @@ func Pad(text string, length int) string {
 
 	for _, match := range expanded {
 		full := match[0]
-		letter := match[1]
+		letter := match[2]
 
 		if letter == "\n" {
 			amount := length - lineLength
@@ -97,7 +97,7 @@ func Wrap(text string, length int) string {
 
 	for _, match := range expanded {
 		full := match[0]
-		letter := match[1]
+		letter := match[2]
 
 		/* TODO: I need to find the list of non-breaking whitespace characters
 			to exclude from this conditional */
@@ -133,6 +133,15 @@ func Wrap(text string, length int) string {
 		}
 
 		if letter == "\n" {
+			/*
+				If the spaces can be jammed into the line, add them.
+				This ensures that Wrap(Pad(*)) doesn't eliminate the
+				padding.
+			*/
+			if lineLength + spaceLength <= length {
+				line += space; lineLength += spaceLength
+			}
+
 			/* Add the current line as-is and clear everything */
 			result = append(result, line)
 			line = ""; lineLength = 0
@@ -147,12 +156,41 @@ func Wrap(text string, length int) string {
 	if wordLength > 0 {
 		line += space + word; lineLength += spaceLength + wordLength
 	}
-	finalLetter := expanded[len(expanded)-1][1]
+	finalLetter := ""
+	if len(expanded) > 0 {
+		finalLetter = expanded[len(expanded)-1][2]
+	}
 	if lineLength > 0 || finalLetter == "\n" {
 		result = append(result, line)
 	}
 
 	return strings.Join(result, "\n")
+}
+
+func DumbWrap(text string, width int) string {
+	expanded := expand(text)
+	result := ""
+	currentLineLength := 0
+
+	for _, match := range expanded {
+		full := match[0]
+		letter := match[2]
+
+		if letter == "\n" {
+			currentLineLength = 0
+			result += "\n"
+			continue
+		}
+
+		if currentLineLength == width {
+			currentLineLength = 0
+			result += "\n"
+		}
+
+		result += full
+		currentLineLength += 1
+	}
+	return result
 }
 
 /*
@@ -167,4 +205,7 @@ func Wrap(text string, length int) string {
 		add `Squash` function that converts newlines to spaces
 		(this will be used to prevent newlines from appearing
 		in things like names and titles)
+
+		add `StrictWrap` function that wraps not based on whitespace
+		but strictly on length (this will be used for code blocks)
 */

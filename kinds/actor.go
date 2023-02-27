@@ -4,7 +4,6 @@ import (
 	"strings"
 	"net/url"
 	"mimicry/style"
-	"fmt"
 	"mimicry/render"
 )
 
@@ -33,11 +32,10 @@ func (a Actor) InlineName() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// if kind != "person" {
-	// 	return fmt.Sprintf("%s (%s, %s)", name, id.Hostname(), kind), nil
-	// }
-	// return fmt.Sprintf("%s (%s)", name, id.Hostname()), nil
-	return fmt.Sprintf("%s (%s, %s)", name, id.Hostname(), kind), nil
+	if kind == "person" {
+		return name + " (" + id.Hostname() + ")", nil
+	}
+	return name + " (" + id.Hostname() + ", " + kind + ")", nil
 }
 
 func (a Actor) Category() string {

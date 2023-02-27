@@ -7,7 +7,13 @@ import (
 	"regexp"
 	"mimicry/style"
 	"errors"
+	"mimicry/ansi"
 )
+
+// TODO: create a `bulletedList` function for all situations where
+// html-specific wrapping is needed. Put them at the bottom of the file
+// and note that that section is different. (This will include one for
+// headers)
 
 /* Terminal codes and control characters should already be escaped
    by this point */
@@ -20,18 +26,19 @@ func Render(text string, width int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	serialized, err := serializeList(nodes)
+	rendered, err := renderList(nodes, width)
 	if err != nil {
 		return "", err
 	}
 
-	return strings.TrimSpace(serialized), nil
+	wrapped := ansi.Wrap(rendered, width)
+	return strings.Trim(wrapped, " \n"), nil
 }
 
-func serializeList(nodes []*html.Node) (string, error) {
+func renderList(nodes []*html.Node, width int) (string, error) {
 	output := ""
 	for _, current := range nodes {
-		result, err := renderNode(current, false)
+		result, err := renderNode(current, width, false)
 		if err != nil {
 			return "", err
 		}
@@ -76,7 +83,7 @@ func mergeText(lhs string, rhs string) string {
 	return lhsTrimmed + "\n\n" + rhsTrimmed
 }
 
-func renderNode(node *html.Node, preserveWhitespace bool) (string, error) {
+func renderNode(node *html.Node, width int, preserveWhitespace bool) (string, error) {
 	if node.Type == html.TextNode {
 		if !preserveWhitespace {
 			whitespace := regexp.MustCompile(`[ \t\n\r]+`)
@@ -89,7 +96,7 @@ func renderNode(node *html.Node, preserveWhitespace bool) (string, error) {
 		return "", nil
 	}
 
-	content, err := serializeChildren(node, preserveWhitespace)
+	content, err := renderChildren(node, width, preserveWhitespace)
 	if err != nil {
 		return "", err
 	}
@@ -117,31 +124,70 @@ func renderNode(node *html.Node, preserveWhitespace bool) (string, error) {
 	case "p", "div":
 		return block(content), nil
 	case "pre":
-		content, err := serializeChildren(node, true)
-		return block(style.CodeBlock(content)), err
+		content, err := renderChildren(node, width - 2, true)
+		if err != nil {
+			return "", err
+		}
+		wrapped := situationalWrap(content, width, true)
+		return block(style.CodeBlock(wrapped)), err
 	case "blockquote":
-		return block(style.QuoteBlock(content)), nil
+		content, err := renderChildren(node, width - 1, preserveWhitespace)
+		if err != nil {
+			return "", err
+		}
+		wrapped := situationalWrap(content, width, preserveWhitespace)
+		return block(style.QuoteBlock(wrapped)), nil
 	case "ul":
-		list, err := bulletedList(node, preserveWhitespace)
+		list, err := bulletedList(node, width, preserveWhitespace)
 		return list, err
 	// case "ul":
 	// 	return numberedList(node), nil
 
 	case "h1":
-		return block(style.Header(content, 1)), nil
+		content, err := renderChildren(node, width - 2, preserveWhitespace)
+		if err != nil {
+			return "", err
+		}
+		wrapped := situationalWrap(content, width - 2, preserveWhitespace)
+		return block(style.Header(wrapped, 1)), nil
 	case "h2":
-		return block(style.Header(content, 2)), nil
+		content, err := renderChildren(node, width - 3, preserveWhitespace)
+		if err != nil {
+			return "", err
+		}
+		wrapped := situationalWrap(content, width - 3, preserveWhitespace)
+		return block(style.Header(wrapped, 2)), nil
 	case "h3":
-		return block(style.Header(content, 3)), nil
+		content, err := renderChildren(node, width - 4, preserveWhitespace)
+		if err != nil {
+			return "", err
+		}
+		wrapped := situationalWrap(content, width - 4, preserveWhitespace)
+		return block(style.Header(wrapped, 3)), nil
 	case "h4":
-		return block(style.Header(content, 4)), nil
+		content, err := renderChildren(node, width - 5, preserveWhitespace)
+		if err != nil {
+			return "", err
+		}
+		wrapped := situationalWrap(content, width - 5, preserveWhitespace)
+		return block(style.Header(wrapped, 4)), nil
 	case "h5":
-		return block(style.Header(content, 5)), nil
+		content, err := renderChildren(node, width - 6, preserveWhitespace)
+		if err != nil {
+			return "", err
+		}
+		wrapped := situationalWrap(content, width - 6, preserveWhitespace)
+		return block(style.Header(wrapped, 5)), nil
 	case "h6":
-		return block(style.Header(content, 6)), nil
+		content, err := renderChildren(node, width - 7, preserveWhitespace)
+		if err != nil {
+			return "", err
+		}
+		wrapped := situationalWrap(content, width - 7, preserveWhitespace)
+		return block(style.Header(wrapped, 6)), nil
 
 	case "hr":
-		return block("―――"), nil
+		return block(strings.Repeat("―", width)), nil
 	case "img", "video", "audio", "iframe":
 		text := getAttribute("alt", node.Attr)
 		if text == "" {
@@ -153,16 +199,17 @@ func renderNode(node *html.Node, preserveWhitespace bool) (string, error) {
 		if text == "" {
 			return "", errors.New(node.Data + " tag is missing both `alt` and `src` attributes")
 		}
-		return block(style.LinkBlock(text)), nil
+		wrapped := situationalWrap(text, width - 2, preserveWhitespace)
+		return block(style.LinkBlock(wrapped)), nil
 	}
 
 	return "", errors.New("Encountered unrecognized element " + node.Data)
 }
 
-func serializeChildren(node *html.Node, preserveWhitespace bool) (string, error) {
+func renderChildren(node *html.Node, width int, preserveWhitespace bool) (string, error) {
 	output := ""
 	for current := node.FirstChild; current != nil; current = current.NextSibling {
-		result, err := renderNode(current, preserveWhitespace)
+		result, err := renderNode(current, width, preserveWhitespace)
 		if err != nil {
 			return "", err
 		}
@@ -175,7 +222,7 @@ func block(text string) string {
 	return "\n\n" + strings.Trim(text, " \n") + "\n\n"
 }
 
-func bulletedList(node *html.Node, preserveWhitespace bool) (string, error) {
+func bulletedList(node *html.Node, width int, preserveWhitespace bool) (string, error) {
 	output := ""
 	for current := node.FirstChild; current != nil; current = current.NextSibling {
 		if current.Type != html.ElementNode {
@@ -186,11 +233,12 @@ func bulletedList(node *html.Node, preserveWhitespace bool) (string, error) {
 			continue
 		}
 
-		result, err := renderNode(current, preserveWhitespace)
+		result, err := renderNode(current, width - 2, preserveWhitespace)
 		if err != nil {
 			return "", err
 		}
-		output += "\n" + style.Bullet(result)
+		wrapped := situationalWrap(result, width - 2, preserveWhitespace)
+		output += "\n" + style.Bullet(wrapped)
 	}
 
 	if node.Parent == nil {
@@ -209,4 +257,12 @@ func getAttribute(name string, attributes []html.Attribute) string {
 		}
 	}
 	return ""
+}
+
+func situationalWrap(text string, width int, preserveWhitespace bool) string {
+	if preserveWhitespace {
+		return ansi.DumbWrap(text, width)
+	}
+
+	return ansi.Wrap(text, width)
 }

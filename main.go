@@ -54,6 +54,6 @@ func main() {
 	if str, err := content.String(); err != nil {
 		panic(err)
 	} else {
-		fmt.Println(str)
+		fmt.Print(str)
 	}
 }
