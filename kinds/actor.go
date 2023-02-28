@@ -16,7 +16,10 @@ func (a Actor) Kind() (string, error) {
 
 func (a Actor) Name() (string, error) {
 	name, err := GetNatural(a, "name", "en")
-	return strings.TrimSpace(name), err
+	if err != nil {
+		name, err = Get[string](a, "preferredUsername")
+	}
+	return name, err
 }
 
 func (a Actor) InlineName() (string, error) {
