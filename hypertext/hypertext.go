@@ -15,6 +15,9 @@ import (
 // and note that that section is different. (This will include one for
 // headers)
 
+// TODO: blocks need to be trimmed on the inside and newlined on 
+// the outside
+
 /* Terminal codes and control characters should already be escaped
    by this point */
 func Render(text string, width int) (string, error) {
@@ -135,8 +138,9 @@ func renderNode(node *html.Node, width int, preserveWhitespace bool) (string, er
 		if err != nil {
 			return "", err
 		}
-		wrapped := situationalWrap(content, width, preserveWhitespace)
-		return block(style.QuoteBlock(wrapped)), nil
+		wrapped := situationalWrap(content, width - 1, preserveWhitespace)
+		// TODO: this text wrap is ugly
+		return block(style.QuoteBlock(strings.Trim(wrapped, " \n"))), nil
 	case "ul":
 		list, err := bulletedList(node, width, preserveWhitespace)
 		return list, err
