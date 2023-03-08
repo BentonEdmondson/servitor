@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func TestBasic(t *testing.T) {
+func TestWrap(t *testing.T) {
 	// These test were pulled and modified from:
 	// https://github.com/muesli/reflow/blob/d4603be2c4a9017b4cf38856841116ffe0f04c59/wordwrap/wordwrap_test.go
 	tests := []struct {
@@ -130,4 +130,56 @@ func TestCodeBlock(t *testing.T) {
 	fmt.Println("This should look like a nice, indented code block:")
 	styled := Indent(Apply(padded, "48;2;75;75;75"), "  ", true)
 	fmt.Println(styled)
+}
+
+func TestSnip(t *testing.T) {
+	// These test were pulled and modified from:
+	// https://github.com/muesli/reflow/blob/d4603be2c4a9017b4cf38856841116ffe0f04c59/wordwrap/wordwrap_test.go
+	tests := []struct {
+		Input string
+		Expected string
+		Height int
+		Width int
+	}{
+		// Restrict lines down:
+		{
+			"one\n\nthree\nfour",
+			"one\n\nthree…",
+			3,
+			25,
+		},
+		// Don't restrict lines when not necessary:
+		{
+			"one\n\nthree\nfour",
+			"one\n\nthree\nfour",
+			5,
+			25,
+		},
+		// Remove last character to insert ellipsis:
+		{
+			"one\ntwo\nthree\nfour",
+			"one\ntwo\nthre…",
+			3,
+			5,
+		},
+		// Omit trailing whitespace only lines:
+		{
+			"one\n\n \nfour",
+			"one…",
+			3,
+			25,
+		},
+		// Omit trailing whitespace and last character for ellipsis:
+		{
+			"one\n\n \nfour",
+			"on…",
+			3,
+			3,
+		},
+	}
+
+	for _, test := range tests {
+		output := Snip(test.Input, test.Width, test.Height, "…")
+		util.AssertEqual(test.Expected, output, t)
+	}	
 }

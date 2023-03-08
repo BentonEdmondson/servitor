@@ -6,9 +6,23 @@ import (
 	"unicode"
 )
 
+// TODO: probably make a type Expanded which is an array of
+// structs to make things more readable and type safe
+
+// TODO: all source code should be ascii so it's more readable,
+// unicode characters should use escape codes
+
 func expand(text string) [][]string {
 	r := regexp.MustCompile(`(?s)((?:\x1b\[.*?m)*)(.)(?:\x1b\[0m)?`)
 	return r.FindAllStringSubmatch(text, -1)
+}
+
+func collapse(expanded [][]string) string {
+	output := ""
+	for _, match := range expanded {
+		output += match[0]
+	}
+	return output
 }
 
 func Apply(text string, style string) string {
@@ -194,18 +208,73 @@ func DumbWrap(text string, width int) string {
 }
 
 /*
+	Limits `text` to the given `height` and `width`, adding an
+	ellipsis to the end
+*/
+// TODO: this function could be optimized into just one loop
+func Snip(text string, width, height int, ellipsis string) string {
+	snipped := []string{}
+
+	/* This split is fine because newlines are 
+	   guaranteed to not be wrapped in ansi codes */
+	lines := strings.Split(text, "\n")
+
+	requiresEllipsis := false
+
+	if len(lines) < height {
+		height = len(lines)
+	} else {
+		requiresEllipsis = true
+	}
+
+	for i := height - 1; i >= 0; i -= 1 {
+		line := expand(lines[i])
+		if len(snipped) == 0 {
+			if lineIsOnlyWhitespace(line) {
+				requiresEllipsis = true
+				continue
+			}
+
+			/* Remove last character to make way for ellipsis */
+			if len(line) == width {
+				line = line[:len(line)-1]
+			}
+		}
+
+		snipped = append([]string{collapse(line)}, snipped...)
+	}
+
+	output := strings.Join(snipped, "\n")
+
+	if requiresEllipsis {
+		output += ellipsis
+	}
+	
+	return output
+}
+
+func lineIsOnlyWhitespace(expanded [][]string) bool {
+	for _, match := range expanded {
+		if !unicode.IsSpace([]rune(match[2])[0]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+/*
 	TODO:
 		add `Scrub` function that removes all ANSI codes from text
 		(this will be used when people redirect output to file)
 
-		add `Snip` function that limits text to a certain number
-		of lines, adding an ellipsis if this required removing
-		some text
-
 		add `Squash` function that converts newlines to spaces
 		(this will be used to prevent newlines from appearing
-		in things like names and titles)
+		in things like names and titles), and removes control
+		characters
 
 		add `StrictWrap` function that wraps not based on whitespace
 		but strictly on length (this will be used for code blocks)
+
+		move `RemoveControlCharacters` from render to here 
 */
