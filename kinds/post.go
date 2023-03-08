@@ -16,6 +16,10 @@ type Post Dict
 // make things less predictable
 // TODO: make the Post references *Post because why not
 
+func (p Post) Raw() Dict {
+	return p
+}
+
 func (p Post) Kind() (string, error) {
 	kind, err := Get[string](p, "type")
 	return strings.ToLower(kind), err
@@ -38,16 +42,6 @@ func (p Post) Body(width int) (string, error) {
 	return render.Render(body, mediaType, width)
 }
 
-// func (p Post) BodyPreview() (string, error) {
-// 	body, err := p.Body()
-// 	// probably should convert to runes and just work with that
-// 	if len(body) > 280*2 { // this is a bug because len counts bytes whereas later I work based on runes
-// 		return fmt.Sprintf("%s…", string([]rune(body)[:280])), err
-// 	} else {
-// 		return body, err
-// 	}
-// }
-
 func (p Post) Identifier() (*url.URL, error) {
 	return GetURL(p, "id")
 }
@@ -56,6 +50,7 @@ func (p Post) Created() (time.Time, error) {
 	return GetTime(p, "published")
 }
 
+// TODO: rename to edited
 func (p Post) Updated() (time.Time, error) {
 	return GetTime(p, "updated")
 }
@@ -133,8 +128,11 @@ func (p Post) header(width int) (string, error) {
 	}
 
 	if created, err := p.Created(); err == nil {
-		output += " at " + style.Color(created.Format("3:04 pm"))
-		output += " on " + style.Color(created.Format("2 Jan 2006"))
+		const timeFormat = "3:04 pm on 2 Jan 2006"
+		output += " at " + style.Color(created.Format(timeFormat))
+		if edited, err := p.Updated(); err == nil {
+			output += "(edited at " + style.Color(edited.Format(timeFormat) + ")")
+		}
 	}
 
 	return ansi.Wrap(output, width), nil
@@ -169,6 +167,25 @@ func (p Post) String() (string, error) {
 			output += "\n"
 		}
 	}
+
+	return output, nil
+}
+
+func (p Post) Preview() (string, error) {
+	output := ""
+	width := 100
+
+	if header, err := p.header(width); err == nil {
+		output += header
+		output += "\n"
+	}
+
+	if body, err := p.Body(width); err == nil {
+		output += ansi.Snip(body, width, 4, style.Color("\u2026"))
+		output += "\n"
+	}
+
+	// TODO: there should probably be attachments here
 
 	return output, nil
 }
