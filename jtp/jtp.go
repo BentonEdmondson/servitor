@@ -29,8 +29,8 @@ var dialer = &tls.Dialer{
 
 var mediaTypeRegexp = regexp.MustCompile(`(?s)^(([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)/([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)).*$`)
 var statusLineRegexp = regexp.MustCompile(`^HTTP/1\.[0-9] ([0-9]{3}).*\n$`)
-var contentTypeRegexp = regexp.MustCompile(`^(?i:content-type:)[ \t\r]*(.*?)[ \t\r]*\n$`)
-var locationRegexp = regexp.MustCompile(`^(?i:location:)[ \t\r]*(.*?)[ \t\r]*\n$`)
+var contentTypeRegexp = regexp.MustCompile(`^(?i:content-type):[ \t\r]*(.*?)[ \t\r]*\n$`)
+var locationRegexp = regexp.MustCompile(`^(?i:location):[ \t\r]*(.*?)[ \t\r]*\n$`)
 
 var acceptHeader = `application/activity+json,` +
 	`application/ld+json; profile="https://www.w3.org/ns/activitystreams"`
@@ -105,7 +105,6 @@ func Get(link *url.URL, maxRedirects uint) (map[string]any, error) {
 			return nil, errors.New("Received " + status + " but max redirects has already been reached")
 		}
 
-		connection.Close()
 		return Get(location, maxRedirects - 1)
 	}
 
