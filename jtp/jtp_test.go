@@ -2,10 +2,10 @@ package jtp
 
 import (
 	"testing"
+	"mimicry/util"
 	// "net/url"
 	// "encoding/json"
 	// "os"
-	"mimicry/util"
 )
 
 func TestStatusLineNoInfo(t *testing.T) {
@@ -20,19 +20,12 @@ func TestStatusLineNoInfo(t *testing.T) {
 // TODO: put this behind an --online flag or figure out
 // how to nicely do offline tests
 // func TestBasic(t *testing.T) {
-// 	link, err := url.Parse("https://pixelfed.social/p/KLeon/535879788929882013")
+// 	link, err := url.Parse("https://httpbin.org/redirect/20")
 // 	if err != nil {
 // 		panic(err)
 // 	}
 
-// 	accept := `application/ld+json; profile="https://www.w3.org/ns/activitystreams", application/activity+json`
-// 	tolerated := []string{
-// 		"application/activity+json",
-// 		"application/ld+json",
-// 		"application/json",
-// 	}
-
-// 	dict, err := Get(link, accept, tolerated)
+// 	dict, err := Get(link, 20)
 // 	if err != nil {
 // 		panic(err)
 // 	}

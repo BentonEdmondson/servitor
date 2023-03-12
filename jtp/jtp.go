@@ -30,6 +30,16 @@ var dialer = &tls.Dialer{
 var mediaTypeRegexp = regexp.MustCompile(`(?s)^(([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)/([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)).*$`)
 var statusLineRegexp = regexp.MustCompile(`^HTTP/1\.[0-9] ([0-9]{3}).*\n$`)
 var contentTypeRegexp = regexp.MustCompile(`^(?i:content-type:)[ \t\r]*(.*?)[ \t\r]*\n$`)
+var locationRegexp = regexp.MustCompile(`^(?i:location:)[ \t\r]*(.*?)[ \t\r]*\n$`)
+
+var acceptHeader = `application/activity+json,` +
+	`application/ld+json; profile="https://www.w3.org/ns/activitystreams"`
+	
+var toleratedTypes = []string{
+	"application/activity+json",
+	"application/ld+json",
+	"application/json",
+}
 
 /*
 	I send an HTTP/1.0 request to ensure the server doesn't respond
@@ -40,18 +50,14 @@ var contentTypeRegexp = regexp.MustCompile(`^(?i:content-type:)[ \t\r]*(.*?)[ \t
 /*
 	link
 		the url being requested
-	requestedTypes
-		the `Accept` header value
-	toleratedTypes
-		a list of media types (excluding parameters) that
-		should be accepted in the response, all other media
-		types result in an error
+	maxRedirects
+		the maximum number of redirects to take
 */
 // TODO: the number of redirects must be limited
-func Get(link *url.URL, requestedTypes string, toleratedTypes []string) (map[string]any, error) {
+func Get(link *url.URL, maxRedirects uint) (map[string]any, error) {
 
 	if link.Scheme != "https" {
-		return nil, errors.New(link.Scheme + "is not supported in requests, only https")
+		return nil, errors.New(link.Scheme + " is not supported in requests, only https")
 	}
 
 	port := link.Port()
@@ -70,7 +76,7 @@ func Get(link *url.URL, requestedTypes string, toleratedTypes []string) (map[str
 	_, err = connection.Write([]byte(
 		"GET " + link.RequestURI() + " HTTP/1.0\r\n" +
 		"Host: " + link.Host + "\r\n" +
-		"Accept: " + requestedTypes + "\r\n" +
+		"Accept: " + acceptHeader + "\r\n" +
 		"Accept-Encoding: identity\r\n" +
 		"\r\n",
 	))
@@ -90,14 +96,24 @@ func Get(link *url.URL, requestedTypes string, toleratedTypes []string) (map[str
 	}
 
 	if strings.HasPrefix(status, "3") {
-		return nil, errors.New("Return code " + status + ", I haven't implemented redirects yet")
+		location, err := findLocation(buf, link)
+		if err != nil {
+			return nil, err
+		}
+
+		if maxRedirects == 0 {
+			return nil, errors.New("Received " + status + " but max redirects has already been reached")
+		}
+
+		connection.Close()
+		return Get(location, maxRedirects - 1)
 	}
 
 	if status != "200" && status != "201" && status != "202" && status != "203" {
 		return nil, errors.New("Received invalid status " + status)
 	}
 
-	err = validateHeaders(buf, toleratedTypes)
+	err = validateHeaders(buf)
 	if err != nil {
 		return nil, err
 	}
@@ -111,18 +127,18 @@ func Get(link *url.URL, requestedTypes string, toleratedTypes []string) (map[str
 	return dictionary, nil
 }
 
-func ParseMediaType(text string) MediaType {
+func ParseMediaType(text string) (MediaType, error) {
 	matches := mediaTypeRegexp.FindStringSubmatch(text)
 
 	if len(matches) != 4 {
-		return MediaType{}
+		return MediaType{}, errors.New(text + " is not a valid media type")
 	}
 
 	return MediaType{
 		Supertype: matches[2],
 		Subtype: matches[3],
 		Full: matches[1],
-	}
+	}, nil
 }
 
 func parseStatusLine(text string) (string, error) {
@@ -135,17 +151,37 @@ func parseStatusLine(text string) (string, error) {
 	return matches[1], nil
 }
 
-func parseContentType(text string) (mediaType MediaType, isContentTypeLine bool) {
+func parseContentType(text string) (MediaType, bool, error) {
 	matches := contentTypeRegexp.FindStringSubmatch(text)
 
 	if len(matches) != 2 {
-		return MediaType{}, false
+		return MediaType{}, false, nil
 	}
 
-	return ParseMediaType(matches[1]), true
+	mediaType, err := ParseMediaType(matches[1])
+	if err != nil {
+		return MediaType{}, true, err
+	}
+
+	return mediaType, true, nil
 }
 
-func validateHeaders(buf *bufio.Reader, toleratedTypes []string) error {
+func parseLocation(text string, baseLink *url.URL) (link *url.URL, isLocationLine bool, err error) {
+	matches := locationRegexp.FindStringSubmatch(text)
+
+	if len(matches) != 2 {
+		return nil, false, nil
+	}
+
+	reference, err := url.Parse(matches[1])
+	if err != nil {
+		return nil, true, err
+	}
+
+	return baseLink.ResolveReference(reference), true, nil
+}
+
+func validateHeaders(buf *bufio.Reader) error {
 	contentTypeValidated := false
 	for {
 		line, err := buf.ReadString('\n')
@@ -157,7 +193,10 @@ func validateHeaders(buf *bufio.Reader, toleratedTypes []string) error {
 			break
 		}
 
-		mediaType, isContentTypeLine := parseContentType(line)
+		mediaType, isContentTypeLine, err := parseContentType(line)
+		if err != nil {
+			return err
+		}
 		if !isContentTypeLine {
 			continue
 		}
@@ -174,4 +213,28 @@ func validateHeaders(buf *bufio.Reader, toleratedTypes []string) error {
 	}
 
 	return nil
+}
+
+func findLocation(buf *bufio.Reader, baseLink *url.URL) (*url.URL, error) {
+	for {
+		line, err := buf.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+
+		if line == "\r\n" {
+			break
+		}
+
+		location, isLocationLine, err := parseLocation(line, baseLink)
+		if err != nil {
+			return nil, err
+		}
+		if !isLocationLine {
+			continue
+		}
+
+		return location, nil
+	}
+	return nil, errors.New("Location is not present in headers")
 }
