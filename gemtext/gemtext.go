@@ -15,6 +15,8 @@ import (
 // e.g. block quotes should probably be able to start
 // with tabs
 
+// TODO: change the line parsing to regex-based
+
 func Render(text string, width int) (string, error) {
 	lines := strings.Split(text, "\n")
 	result := ""
@@ -38,12 +40,16 @@ func Render(text string, width int) (string, error) {
 		}
 
 		switch {
+		// `^###[ \t]*(.*)$`
 		case strings.HasPrefix(line, "###"):
 			result += style.Header(strings.TrimLeft(line[3:], " \t"), 3) + "\n"
+		// `^##[ \t]*(.*)$`
 		case strings.HasPrefix(line, "##"):
 			result += style.Header(strings.TrimLeft(line[2:], " \t"), 2) + "\n"
+		// `^#[ \t]*(.*)$`
 		case strings.HasPrefix(line, "#"):
 			result += style.Header(strings.TrimLeft(line[1:], " \t"), 1) + "\n"
+		// `^> ?(.*)$`
 		case strings.HasPrefix(line, ">"):
 			/*
 				Don't just TrimLeft all whitespace, because indents should be possible,
@@ -60,11 +66,13 @@ func Render(text string, width int) (string, error) {
 					>   second line indented
 			*/
 			result += style.QuoteBlock(strings.TrimPrefix(line[1:], " ")) + "\n"
+		// `^\* (.*)$`
 		case strings.HasPrefix(line, "* "):
 			/*
 				The spec says nothing about optional whitespace, so don't trim at all.
 			*/
 			result += style.Bullet(line[2:]) + "\n"
+		// `^=>[ \t]*(.*?)(?:[ \t]+(.*))?$`
 		case strings.HasPrefix(line, "=>"):
 			rendered, err := renderLink(strings.TrimLeft(line[2:], " \t"))
 			if err != nil {
