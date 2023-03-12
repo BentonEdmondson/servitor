@@ -115,7 +115,7 @@ func renderNode(node *html.Node, width int, preserveWhitespace bool) (string, er
 		return style.Italic(content), nil
 	case "b", "strong":
 		return style.Bold(content), nil
-	case "u":
+	case "u", "ins":
 		return style.Underline(content), nil
 	case "mark":
 		return style.Highlight(content), nil
