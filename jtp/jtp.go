@@ -188,7 +188,7 @@ func validateHeaders(buf *bufio.Reader) error {
 			return err
 		}
 
-		if line == "\r\n" {
+		if line == "\r\n" || line == "\n" {
 			break
 		}
 
@@ -221,7 +221,7 @@ func findLocation(buf *bufio.Reader, baseLink *url.URL) (*url.URL, error) {
 			return nil, err
 		}
 
-		if line == "\r\n" {
+		if line == "\r\n" || line == "\n" {
 			break
 		}
 
