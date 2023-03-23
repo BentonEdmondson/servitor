@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 	"mimicry/style"
-	"errors"
 	"mimicry/render"
 	"mimicry/ansi"
 )
@@ -71,6 +70,18 @@ func (p Post) Attachments() ([]Link, error) {
 	return GetLinksLenient(p, "attachment")
 }
 
+func (p Post) Comments() (Collection, error) {
+	replies, repliesErr := GetItem[Collection](p, "replies")
+	if repliesErr != nil {
+		comments, commentsErr := GetItem[Collection](p, "comments")
+		if commentsErr != nil {
+			return Collection{}, repliesErr
+		}
+		replies = comments
+	}
+	return replies, nil
+}
+
 func (p Post) Link() (Link, error) {
 	kind, err := p.Kind()
 	if err != nil {
@@ -85,10 +96,8 @@ func (p Post) Link() (Link, error) {
 	switch kind {
 	case "audio", "image", "video":
 		return SelectBestLink(links, kind)
-	case "article", "document", "note", "page":
+	default: // "article", "document", "note", "page":
 		return SelectFirstLink(links)
-	default:
-		return nil, errors.New("Link extraction is not supported for type " + kind)
 	}
 }
 
@@ -130,24 +139,23 @@ func (p Post) header(width int) (string, error) {
 	if created, err := p.Created(); err == nil {
 		const timeFormat = "3:04 pm on 2 Jan 2006"
 		output += " at " + style.Color(created.Format(timeFormat))
-		if edited, err := p.Updated(); err == nil {
-			output += "(edited at " + style.Color(edited.Format(timeFormat) + ")")
-		}
+		// if edited, err := p.Updated(); err == nil {
+		// 	output += " (edited at " + style.Color(edited.Format(timeFormat)) + ")"
+		// }
 	}
 
 	return ansi.Wrap(output, width), nil
 }
 
-func (p Post) String() (string, error) {
+func (p Post) String(width int) (string, error) {
 	output := ""
-	width := 100
 
-	if header, err := p.header(width - 2); err == nil {
+	if header, err := p.header(width - 4); err == nil {
 		output += ansi.Indent(header, "  ", true)
 		output += "\n\n"
 	}
 
-	if body, err := p.Body(width - 4); err == nil {
+	if body, err := p.Body(width - 8); err == nil {
 		output += ansi.Indent(body, "    ", true)
 		output += "\n\n"
 	}
@@ -157,7 +165,7 @@ func (p Post) String() (string, error) {
 			section := "Attachments:\n"
 			names := []string{}
 			for _, attachment := range attachments {
-				if name, err := attachment.String(); err == nil {
+				if name, err := attachment.String(width); err == nil {
 					names = append(names, style.Link(name))
 				}
 			}
@@ -166,6 +174,20 @@ func (p Post) String() (string, error) {
 			output += section
 			output += "\n"
 		}
+	}
+
+	if comments, err := p.Comments(); err == nil {
+		if size, err := comments.Size(); err == nil {
+			output += ansi.Indent(ansi.Wrap("with " + style.Color(size + " comments"), width - 2), "  ", true)
+			output += "\n\n"
+		}
+		if section, err := comments.String(width); err == nil {
+			output += section + "\n"
+		} else {
+			return "", err
+		}
+	} else {
+		return "", err
 	}
 
 	return output, nil

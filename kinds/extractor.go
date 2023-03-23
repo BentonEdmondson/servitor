@@ -6,18 +6,29 @@ import (
 	"time"
 )
 
-// TODO throughout this file: attach the problematic object to the error
-// make these all methods on Dictionary
+// TODO: rename this file to dictionary.go
+// TODO: rename Dict to Dictionary
+
+// TODO: add a HasContent method. This is used when checking if
+// content exists, so Actors can apply mediaType to summary,
+// and Posts can apply it to url. In other situations (items vs
+// orderedItems, name vs preferredName) attempting to fallback
+// is always better than just failing, and for (absence of next/prev)
+// if I don't have next, I have no other option, so it is 
+// effectively the end of the line
+
+// TODO: read through the spec's discussion on security
+
 type Dict = map[string]any
 
 func Get[T any](o Dict, key string) (T, error) {
 	var zero T
 	if value, ok := o[key]; !ok {
 		return zero, errors.New("Object does not contain key " + key)
-	} else if value, ok := value.(T); !ok {
+	} else if narrowed, ok := value.(T); !ok {
 		return zero, errors.New("Key " + key + " is not of the desired type")
 	} else {
-		return value, nil
+		return narrowed, nil
 	}
 }
 
@@ -63,7 +74,7 @@ func GetURL(o Dict, key string) (*url.URL, error) {
 	}
 }
 
-// TODO: need to filter out the 3 public cases.
+// TODO: this needs to be switched over to using `GetItem`
 /*
 	`GetContent`
 	For a given key, return all values of type T.
@@ -99,7 +110,7 @@ func GetContent[T Content](d Dict, key string) ([]T, error) {
 				narrowed == "as:Public" || narrowed == "Public" { continue }
 			url, err := url.Parse(narrowed)
 			if err != nil { continue }
-			object, err := Fetch(url)
+			object, err := FetchURL(url)
 			if err != nil { continue }
 			asT, isT := object.(T)
 			if !isT { continue }
@@ -109,6 +120,26 @@ func GetContent[T Content](d Dict, key string) ([]T, error) {
 	}
 
 	return output, nil
+}
+
+func GetItem[T Content](d Dict, key string) (T, error) {
+	value, err := Get[any](d, key)
+	if err != nil {
+		var dummy T
+		return dummy, err
+	}
+
+	source, _ := GetURL(d, "id")
+
+	fetched, err := FetchUnknown(value, source)
+
+	asT, isT := fetched.(T)
+
+	if !isT {
+		errors.New("Fetched " + key + " on " + source.String() + " is not of the desired type")
+	}
+
+	return asT, nil
 }
 
 /*
@@ -172,6 +203,7 @@ func GetLinksStrict(d Dict, key string) ([]Link, error) {
 				"mediaType": defaultMediaType,
 			})
 		case Dict:
+			// TODO: need to check this error?
 			source, err := GetURL(d, "id")
 			constructed, err := Construct(narrowed, source)
 			if err != nil { continue }

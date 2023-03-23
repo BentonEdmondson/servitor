@@ -9,6 +9,10 @@ import (
 
 type Actor Dict
 
+func (a Actor) Raw() Dict {
+	return a
+}
+
 func (a Actor) Kind() (string, error) {
 	kind, err := Get[string](a, "type")
 	return strings.ToLower(kind), err
@@ -58,7 +62,7 @@ func (a Actor) Bio() (string, error) {
 	return render.Render(body, mediaType, 80)
 }
 
-func (a Actor) String() (string, error) {
+func (a Actor) String(width int) (string, error) {
 	output := ""
 
 	name, err := a.InlineName()
@@ -71,4 +75,8 @@ func (a Actor) String() (string, error) {
 		output += bio
 	}
 	return output, nil
+}
+
+func (a Actor) Preview() (string, error) {
+	return "todo", nil
 }

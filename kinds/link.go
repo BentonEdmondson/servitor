@@ -8,8 +8,10 @@ import (
 
 type Link Dict
 
-// one of these should be omitted so
-// Link isn't Content
+func (l Link) Raw() Dict {
+	return l
+}
+
 func (l Link) Kind() (string, error) {
 	return "link", nil
 }
@@ -50,16 +52,15 @@ func (l Link) Identifier() (*url.URL, error) {
 
 // used for link prioritization, roughly
 // related to resolution
-func (l Link) rating() int {
-	height, err := Get[int](l, "height")
+func (l Link) rating() float64 {
+	height, err := Get[float64](l, "height")
 	if err != nil { height = 1 }
-	width, err := Get[int](l, "width")
+	width, err := Get[float64](l, "width")
 	if err != nil { width = 1 }
 	return height * width
 }
 
-// TODO: update of course to be nice markup of some sort
-func (l Link) String() (string, error) {
+func (l Link) String(width int) (string, error) {
 	output := ""
 
 	if alt, err := l.Alt(); err == nil {
@@ -75,7 +76,12 @@ func (l Link) String() (string, error) {
 	return output, nil
 }
 
+func (l Link) Preview() (string, error) {
+	return "todo", nil
+}
+
 // TODO: must test when list only has 1 link (probably works)
+// TODO: pass in *MediaType instead of supertype
 func SelectBestLink(links []Link, supertype string) (Link, error) {
 	if len(links) == 0 {
 		return nil, errors.New("Can't select best link of type " + supertype + "/* from an empty list")

@@ -4,8 +4,11 @@ import (
 	"net/url"
 )
 
+// TODO: rename to Item
+// TODO: a collection should probably not be an item
 type Content interface {
-	String() (string, error)
+	String(width int) (string, error)
+	Preview() (string, error)
 	Kind() (string, error)
 	Category() string
 
@@ -14,4 +17,5 @@ type Content interface {
 	// if it is present and malformed, then use
 	// an error
 	Identifier() (*url.URL, error)
+	Raw() Dict
 }
