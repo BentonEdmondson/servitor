@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 	"encoding/json"
+	. "mimicry/preamble"
 )
 
 // TODO: parseMediaType should probably return an error if the mediaType is invalid
@@ -53,77 +54,104 @@ var toleratedTypes = []string{
 	maxRedirects
 		the maximum number of redirects to take
 */
-// TODO: the number of redirects must be limited
-func Get(link *url.URL, maxRedirects uint) (map[string]any, error) {
+func Get(link *url.URL, maxRedirects uint) <-chan *Result[map[string]any] {
 
-	if link.Scheme != "https" {
-		return nil, errors.New(link.Scheme + " is not supported in requests, only https")
-	}
+	channel := make(chan *Result[map[string]any], 1)
 
-	port := link.Port()
-	if port == "" {
-		port = "443"
-	}
+	go func() {
+		if link.Scheme != "https" {
+			channel <- Err[map[string]any](errors.New(link.Scheme + " is not supported in requests, only https"))
+			return
+		}
 
-	hostport := net.JoinHostPort(link.Hostname(), port)
+		port := link.Port()
+		if port == "" {
+			port = "443"
+		}
 
-	connection, err := dialer.Dial("tcp", hostport)
-	if err != nil {
-		return nil, err
-	}
-	defer connection.Close()
+		hostport := net.JoinHostPort(link.Hostname(), port)
 
-	_, err = connection.Write([]byte(
-		"GET " + link.RequestURI() + " HTTP/1.0\r\n" +
-		"Host: " + link.Host + "\r\n" +
-		"Accept: " + acceptHeader + "\r\n" +
-		"Accept-Encoding: identity\r\n" +
-		"\r\n",
-	))
-	if err != nil {
-		return nil, err
-	}
-
-	buf := bufio.NewReader(connection)
-	statusLine, err := buf.ReadString('\n')
-	if err != nil {
-		return nil, fmt.Errorf("Encountered error while reading status line of HTTP response: %w", err)
-	}
-
-	status, err := parseStatusLine(statusLine)
-	if err != nil {
-		return nil, err
-	}
-
-	if strings.HasPrefix(status, "3") {
-		location, err := findLocation(buf, link)
+		connection, err := dialer.Dial("tcp", hostport)
 		if err != nil {
-			return nil, err
+			channel <- Err[map[string]any](err)
+			return
 		}
 
-		if maxRedirects == 0 {
-			return nil, errors.New("Received " + status + " but max redirects has already been reached")
+		_, err = connection.Write([]byte(
+			"GET " + link.RequestURI() + " HTTP/1.0\r\n" +
+			"Host: " + link.Host + "\r\n" +
+			"Accept: " + acceptHeader + "\r\n" +
+			"Accept-Encoding: identity\r\n" +
+			"\r\n",
+		))
+		if err != nil {
+			channel <- Err[map[string]any](err, connection.Close())
+			return
 		}
 
-		return Get(location, maxRedirects - 1)
-	}
+		buf := bufio.NewReader(connection)
+		statusLine, err := buf.ReadString('\n')
+		if err != nil {
+			channel <- Err[map[string]any](
+				fmt.Errorf("failed to parse HTTP status line: %w", err),
+				connection.Close(),
+			)
+			return
+		}
 
-	if status != "200" && status != "201" && status != "202" && status != "203" {
-		return nil, errors.New("Received invalid status " + status)
-	}
+		status, err := parseStatusLine(statusLine)
+		if err != nil {
+			channel <- Err[map[string]any](err, connection.Close())
+			return
+		}
 
-	err = validateHeaders(buf)
-	if err != nil {
-		return nil, err
-	}
+		if strings.HasPrefix(status, "3") {
+			location, err := findLocation(buf, link)
+			if err != nil {
+				channel <- Err[map[string]any](err, connection.Close())
+				return
+			}
 
-	var dictionary map[string]any
-	err = json.NewDecoder(buf).Decode(&dictionary)
-	if err != nil {
-		return nil, err
-	}
+			if maxRedirects == 0 {
+				channel <- Err[map[string]any](
+					errors.New("Received " + status + " but max redirects has already been reached"),
+					connection.Close(),
+				)
+				return
+			}
 
-	return dictionary, nil
+			channel <- <-Get(location, maxRedirects - 1)
+			return
+		}
+
+		if status != "200" && status != "201" && status != "202" && status != "203" {
+			channel <- Err[map[string]any](errors.New("Received invalid status " + status))
+			return
+		}
+
+		err = validateHeaders(buf)
+		if err != nil {
+			channel <- Err[map[string]any](err)
+			return
+		}
+
+		var dictionary map[string]any
+		err = json.NewDecoder(buf).Decode(&dictionary)
+		if err != nil {
+			channel <- Err[map[string]any](fmt.Errorf("failed to parse JSON: %w", err))
+			return
+		}
+
+		err = connection.Close()
+		if err != nil {
+			channel <- Err[map[string]any](err)
+			return
+		}
+
+		channel <- Ok(dictionary)
+	}()
+
+	return channel
 }
 
 func ParseMediaType(text string) (MediaType, error) {

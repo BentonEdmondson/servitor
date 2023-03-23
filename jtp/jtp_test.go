@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"encoding/json"
 	"os"
+	. "mimicry/preamble"
 )
 
 func TestStatusLineNoInfo(t *testing.T) {
@@ -25,12 +26,22 @@ func TestBasic(t *testing.T) {
 		panic(err)
 	}
 
-	dict, err := Get(link, 20)
+	dicts := AwaitAll(Get(link, 20), Get(link, 20))
+
+	if dicts[0].Err != nil {
+		panic(dicts[0].Err)
+	}
+
+	if dicts[1].Err != nil {
+		panic(dicts[1].Err)
+	}
+
+	err = json.NewEncoder(os.Stdout).Encode(dicts[0].Ok)
 	if err != nil {
 		panic(err)
 	}
 
-	err = json.NewEncoder(os.Stdout).Encode(dict)
+	err = json.NewEncoder(os.Stdout).Encode(dicts[1].Ok)
 	if err != nil {
 		panic(err)
 	}
