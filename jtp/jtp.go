@@ -120,30 +120,42 @@ func Get(link *url.URL, maxRedirects uint) <-chan *Result[map[string]any] {
 				return
 			}
 
+			if err := connection.Close(); err != nil {
+				channel <- Err[map[string]any](err)
+				return
+			}
 			channel <- <-Get(location, maxRedirects - 1)
 			return
 		}
 
 		if status != "200" && status != "201" && status != "202" && status != "203" {
-			channel <- Err[map[string]any](errors.New("Received invalid status " + status))
+			channel <- Err[map[string]any](
+				errors.New("Received invalid status " + status),
+				connection.Close(),
+			)
 			return
 		}
 
 		err = validateHeaders(buf)
 		if err != nil {
-			channel <- Err[map[string]any](err)
+			channel <- Err[map[string]any](
+				err,
+				connection.Close(),
+			)
 			return
 		}
 
 		var dictionary map[string]any
 		err = json.NewDecoder(buf).Decode(&dictionary)
 		if err != nil {
-			channel <- Err[map[string]any](fmt.Errorf("failed to parse JSON: %w", err))
+			channel <- Err[map[string]any](
+				fmt.Errorf("failed to parse JSON: %w", err),
+				connection.Close(),
+			)
 			return
 		}
 
-		err = connection.Close()
-		if err != nil {
+		if err := connection.Close(); err != nil {
 			channel <- Err[map[string]any](err)
 			return
 		}
