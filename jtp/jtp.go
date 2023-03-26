@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"strings"
 	"encoding/json"
-	. "mimicry/preamble"
 )
 
 // TODO: parseMediaType should probably return an error if the mediaType is invalid
@@ -33,15 +32,6 @@ var statusLineRegexp = regexp.MustCompile(`^HTTP/1\.[0-9] ([0-9]{3}).*\n$`)
 var contentTypeRegexp = regexp.MustCompile(`^(?i:content-type):[ \t\r]*(.*?)[ \t\r]*\n$`)
 var locationRegexp = regexp.MustCompile(`^(?i:location):[ \t\r]*(.*?)[ \t\r]*\n$`)
 
-var acceptHeader = `application/activity+json,` +
-	`application/ld+json; profile="https://www.w3.org/ns/activitystreams"`
-	
-var toleratedTypes = []string{
-	"application/activity+json",
-	"application/ld+json",
-	"application/json",
-}
-
 /*
 	I send an HTTP/1.0 request to ensure the server doesn't respond
 	with chunked transfer encoding.
@@ -54,116 +44,93 @@ var toleratedTypes = []string{
 	maxRedirects
 		the maximum number of redirects to take
 */
-func Get(link *url.URL, maxRedirects uint) <-chan *Result[map[string]any] {
+func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (map[string]any, error) {
+	if link.Scheme != "https" {
+		return nil, errors.New(link.Scheme + " is not supported in requests, only https")
+	}
 
-	channel := make(chan *Result[map[string]any], 1)
+	port := link.Port()
+	if port == "" {
+		port = "443"
+	}
 
-	go func() {
-		if link.Scheme != "https" {
-			channel <- Err[map[string]any](errors.New(link.Scheme + " is not supported in requests, only https"))
-			return
-		}
+	hostport := net.JoinHostPort(link.Hostname(), port)
 
-		port := link.Port()
-		if port == "" {
-			port = "443"
-		}
+	connection, err := dialer.Dial("tcp", hostport)
+	if err != nil {
+		return nil, err
+	}
 
-		hostport := net.JoinHostPort(link.Hostname(), port)
+	_, err = connection.Write([]byte(
+		"GET " + link.RequestURI() + " HTTP/1.0\r\n" +
+		"Host: " + link.Host + "\r\n" +
+		"Accept: " + accept + "\r\n" +
+		"Accept-Encoding: identity\r\n" +
+		"\r\n",
+	))
+	if err != nil {
+		return nil, errors.Join(err, connection.Close())
+	}
 
-		connection, err := dialer.Dial("tcp", hostport)
+	buf := bufio.NewReader(connection)
+	statusLine, err := buf.ReadString('\n')
+	if err != nil {
+		return nil, errors.Join(
+			fmt.Errorf("failed to parse HTTP status line: %w", err),
+			connection.Close(),
+		)
+	}
+
+	status, err := parseStatusLine(statusLine)
+	if err != nil {
+		return nil, errors.Join(err, connection.Close())
+	}
+
+	if strings.HasPrefix(status, "3") {
+		location, err := findLocation(buf, link)
 		if err != nil {
-			channel <- Err[map[string]any](err)
-			return
+			return nil, errors.Join(err, connection.Close())
 		}
 
-		_, err = connection.Write([]byte(
-			"GET " + link.RequestURI() + " HTTP/1.0\r\n" +
-			"Host: " + link.Host + "\r\n" +
-			"Accept: " + acceptHeader + "\r\n" +
-			"Accept-Encoding: identity\r\n" +
-			"\r\n",
-		))
-		if err != nil {
-			channel <- Err[map[string]any](err, connection.Close())
-			return
-		}
-
-		buf := bufio.NewReader(connection)
-		statusLine, err := buf.ReadString('\n')
-		if err != nil {
-			channel <- Err[map[string]any](
-				fmt.Errorf("failed to parse HTTP status line: %w", err),
+		if maxRedirects == 0 {
+			return nil, errors.Join(
+				errors.New("Received " + status + " but max redirects has already been reached"),
 				connection.Close(),
 			)
-			return
-		}
-
-		status, err := parseStatusLine(statusLine)
-		if err != nil {
-			channel <- Err[map[string]any](err, connection.Close())
-			return
-		}
-
-		if strings.HasPrefix(status, "3") {
-			location, err := findLocation(buf, link)
-			if err != nil {
-				channel <- Err[map[string]any](err, connection.Close())
-				return
-			}
-
-			if maxRedirects == 0 {
-				channel <- Err[map[string]any](
-					errors.New("Received " + status + " but max redirects has already been reached"),
-					connection.Close(),
-				)
-				return
-			}
-
-			if err := connection.Close(); err != nil {
-				channel <- Err[map[string]any](err)
-				return
-			}
-			channel <- <-Get(location, maxRedirects - 1)
-			return
-		}
-
-		if status != "200" && status != "201" && status != "202" && status != "203" {
-			channel <- Err[map[string]any](
-				errors.New("Received invalid status " + status),
-				connection.Close(),
-			)
-			return
-		}
-
-		err = validateHeaders(buf)
-		if err != nil {
-			channel <- Err[map[string]any](
-				err,
-				connection.Close(),
-			)
-			return
-		}
-
-		var dictionary map[string]any
-		err = json.NewDecoder(buf).Decode(&dictionary)
-		if err != nil {
-			channel <- Err[map[string]any](
-				fmt.Errorf("failed to parse JSON: %w", err),
-				connection.Close(),
-			)
-			return
 		}
 
 		if err := connection.Close(); err != nil {
-			channel <- Err[map[string]any](err)
-			return
+			return nil, err
 		}
+		return Get(location, accept, tolerated, maxRedirects - 1)
+	}
 
-		channel <- Ok(dictionary)
-	}()
+	if status != "200" && status != "201" && status != "202" && status != "203" {
+		return nil, errors.Join(
+			errors.New("received invalid status " + status),
+			connection.Close(),
+		)
+	}
 
-	return channel
+	err = validateHeaders(buf, tolerated)
+	if err != nil {
+		return nil, errors.Join(err, connection.Close())
+	}
+
+	var dictionary map[string]any
+	err = json.NewDecoder(buf).Decode(&dictionary)
+	if err != nil {
+		return nil, errors.Join(
+			fmt.Errorf("failed to parse JSON: %w", err),
+			connection.Close(),
+		)
+	}
+
+	if err := connection.Close(); err != nil {
+		return nil, err
+	}
+
+	return dictionary, nil
 }
 
 func ParseMediaType(text string) (MediaType, error) {
@@ -220,7 +187,7 @@ func parseLocation(text string, baseLink *url.URL) (link *url.URL, isLocationLin
 	return baseLink.ResolveReference(reference), true, nil
 }
 
-func validateHeaders(buf *bufio.Reader) error {
+func validateHeaders(buf *bufio.Reader, tolerated []string) error {
 	contentTypeValidated := false
 	for {
 		line, err := buf.ReadString('\n')
@@ -240,7 +207,7 @@ func validateHeaders(buf *bufio.Reader) error {
 			continue
 		}
 
-		if slices.Contains(toleratedTypes, mediaType.Full) {
+		if slices.Contains(tolerated, mediaType.Full) {
 			contentTypeValidated = true
 		} else {
 			return errors.New("Response contains invalid content type " + mediaType.Full)
