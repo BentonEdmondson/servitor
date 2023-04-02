@@ -4,26 +4,27 @@ import (
 	"strings"
 	"net/url"
 	"mimicry/style"
-	"mimicry/render"
 )
 
-type Actor Dict
-
-func (a Actor) Raw() Dict {
-	return a
+type Actor struct {
+	Object
 }
 
-func (a Actor) Kind() (string, error) {
-	kind, err := Get[string](a, "type")
-	return strings.ToLower(kind), err
+func (a Actor) Kind() string {
+	kind, err := a.GetString("type")
+	if err != nil {
+		panic(err)
+	}
+	return strings.ToLower(kind)
 }
 
 func (a Actor) Name() (string, error) {
-	name, err := GetNatural(a, "name", "en")
-	if err != nil {
-		name, err = Get[string](a, "preferredUsername")
+	if a.Has("preferredUsername") && !a.HasNatural("name") {
+		name, err := a.GetString("preferredUsername")
+		if err != nil { return "", err }
+		return "@" + name, nil
 	}
-	return name, err
+	return a.GetNatural("name", "en")
 }
 
 func (a Actor) InlineName() (string, error) {
@@ -31,18 +32,17 @@ func (a Actor) InlineName() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	kind := a.Kind()
+	var suffix string
 	id, err := a.Identifier()
-	if err != nil {
-		return "", err
+	if err == nil {
+		if kind == "person" {
+			suffix = "(" + id.Hostname() + ")"
+		} else {
+			suffix = "(" + id.Hostname() + ", " + kind + ")"
+		}
 	}
-	kind, err := a.Kind()
-	if err != nil {
-		return "", err
-	}
-	if kind == "person" {
-		return name + " (" + id.Hostname() + ")", nil
-	}
-	return name + " (" + id.Hostname() + ", " + kind + ")", nil
+	return name + " " + suffix, nil
 }
 
 func (a Actor) Category() string {
@@ -50,16 +50,11 @@ func (a Actor) Category() string {
 }
 
 func (a Actor) Identifier() (*url.URL, error) {
-	return GetURL(a, "id")
+	return a.GetURL("id")
 }
 
 func (a Actor) Bio() (string, error) {
-	body, err := GetNatural(a, "summary", "en")
-	mediaType, err := Get[string](a, "mediaType")
-	if err != nil {
-		mediaType = "text/html"
-	}
-	return render.Render(body, mediaType, 80)
+	return a.Render("summary", "en", "mediaType", 80)
 }
 
 func (a Actor) String(width int) (string, error) {

@@ -7,19 +7,16 @@ import (
 )
 
 type Collection struct {
-	page Dict
+	Object
 
 	// index *within the current page*
 	index int
 }
 
-func (c Collection) Raw() Dict {
-	return c.page
-}
-
-func (c Collection) Kind() (string, error) {
-	kind, err := Get[string](c.page, "type")
-	return strings.ToLower(kind), err
+func (c Collection) Kind() string {
+	kind, err := c.GetString("type")
+	if err != nil { panic(err) }
+	return strings.ToLower(kind)
 }
 
 func (c Collection) Category() string {
@@ -27,7 +24,7 @@ func (c Collection) Category() string {
 }
 
 func (c Collection) Identifier() (*url.URL, error) {
-	return GetURL(c.page, "id")
+	return c.GetURL("id")
 }
 
 func (c Collection) String(width int) (string, error) {
@@ -42,6 +39,8 @@ func (c Collection) String(width int) (string, error) {
 		}
 
 		if err != nil {
+			// TODO: add a beautiful message here saying
+			// failed to load comment: <error>
 			c.Next()
 			continue
 		}
@@ -52,7 +51,6 @@ func (c Collection) String(width int) (string, error) {
 		}
 
 		elements = append(elements, output)
-
 		c.Next()
 	}
 	
@@ -60,79 +58,78 @@ func (c Collection) String(width int) (string, error) {
 }
 
 func (c Collection) Size() (string, error) {
-	value, err := Get[float64](c.page, "totalItems")
+	value, err := c.GetNumber("totalItems")
 	if err != nil {
 		return "", err
 	}
-	return strconv.Itoa(int(value)), nil
+	return strconv.FormatUint(value, 10), nil
 }
 
 func (c Collection) items() []any {
-	itemsList, itemsErr := Get[[]any](c.page, "items")
-	if itemsErr == nil {
-		return itemsList
+	if c.Has("items") {
+		if list, err := c.GetList("items"); err == nil {
+			return list
+		} else {
+			return []any{}
+		}
 	}
-	orderedItemsList, orderedItemsErr := Get[[]any](c.page, "orderedItems")
-	if orderedItemsErr == nil {
-		return orderedItemsList
+	if c.Has("orderedItems") {
+		if list, err := c.GetList("orderedItems"); err == nil {
+			return list
+		} else {
+			return []any{}
+		}
 	}
-
 	return []any{}
 }
 
-func (c *Collection) Next() (Content, error) {
+func (c *Collection) Next() (Item, error) {
 	c.index += 1
 	return c.Current()
 }
 
-func (c *Collection) Previous() (Content, error) {
+func (c *Collection) Previous() (Item, error) {
 	c.index -= 1
 	return c.Current()
 }
 
-/* This return type is a Option<Result<Content>>
+/* This return type is a Option<Result<Item>>
    where nil, nil represents None (end of collection)
    nil, err represents Some(Err()) (current item failed construction)
    x, nil represent Some(x) (current item)
    and x, err is invalid */
-func (c *Collection) Current() (Content, error) {
+func (c *Collection) Current() (Item, error) {
 	items := c.items()
 	if len(items) == 0 {
-		kind, kindErr := c.Kind()
-		if kindErr != nil {
-			return nil, nil
-		}
-
+		kind := c.Kind()
 		/* If it is a collection, get the first page */
 		if kind == "collection" || kind == "orderedcollection" {
-			first, firstErr := GetItem[Collection](c.page, "first")
+			first, firstErr := c.GetCollection("first")
 			if firstErr != nil {
 				return nil, nil
 			}
-			c.page = first.page
+			c.Object = first.Object
 			c.index = 0
 			return c.Current()
 		}
 	}
 
-	/* At this point we know items are present */
-
 	/* This means we are beyond the end of this page */
 	if c.index >= len(items) {
-		next, err := GetItem[Collection](c.page, "next")
+		next, err := c.GetCollection("next")
 		if err != nil {
 			return nil, nil
 		}
-		c.page = next.page
+		c.Object = next.Object
 		c.index = 0
 		/* Call recursively because the next page may be empty */
 		return c.Current()
 	} else if c.index < 0 {
-		prev, err := GetItem[Collection](c.page, "prev")
+		prev, err := c.GetCollection("prev")
 		if err != nil {
 			return nil, nil
 		}
-		c.page = prev.page
+		c.Object = prev.Object
 		items := c.items()
 		/* If this new page is empty, this will be -1, and the
 		   call to Current will flip back yet another page, as

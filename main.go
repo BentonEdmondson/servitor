@@ -1,12 +1,10 @@
 package main
 
 import (
-	"encoding/json"
+	"fmt"
 	"mimicry/kinds"
 	"os"
-	"fmt"
-	// "mimicry/style"
-	// "mimicry/render"
+	"encoding/json"
 )
 
 // TODO: when returning errors, use zero value for return
@@ -20,14 +18,14 @@ func main() {
 	link := os.Args[len(os.Args)-1]
 	command := os.Args[1]
 
-	content, err := kinds.FetchUserInput(link)
+	item, err := kinds.FetchUserInput(link)
 	if err != nil {
 		panic(err)
 	}
 
 	if command == "raw" {
 		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(content.Raw()); err != nil {
+		if err := enc.Encode(item); err != nil {
 			panic(err)
 		}
 		return
@@ -42,7 +40,7 @@ func main() {
 	// 	return
 	// }
 
-	if str, err := content.String(90); err != nil {
+	if str, err := item.String(90); err != nil {
 		panic(err)
 	} else {
 		fmt.Print(str)

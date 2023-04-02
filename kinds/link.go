@@ -2,60 +2,49 @@ package kinds
 
 import (
 	"net/url"
-	"strings"
 	"errors"
 )
 
-type Link Dict
-
-func (l Link) Raw() Dict {
-	return l
+type Link struct {
+	Object
 }
 
-func (l Link) Kind() (string, error) {
-	return "link", nil
+func (l Link) Kind() string {
+	return "link"
 }
 func (l Link) Category() string {
 	return "link"
 }
 
 func (l Link) Supertype() (string, error) {
-	mediaType, err := Get[string](l, "mediaType")
-	return strings.Split(mediaType, "/")[0], err
+	mediaType, err := l.GetMediaType("mediaType")
+	if err != nil { return "", err }
+	return mediaType.Supertype, nil
 }
 
 func (l Link) Subtype() (string, error) {
-	if mediaType, err := Get[string](l, "mediaType"); err != nil {
-		return "", err
-	} else if split := strings.Split(mediaType, "/"); len(split) < 2 {
-		return "", errors.New("Media type " + mediaType + " lacks a subtype")
-	} else {
-		return split[1], nil
-	}
+	mediaType, err := l.GetMediaType("mediaType")
+	if err != nil { return "", err }
+	return mediaType.Subtype, nil
 }
 
 func (l Link) URL() (*url.URL, error) {
-	return GetURL(l, "href")
+	return l.GetURL("href")
 }
 
 func (l Link) Alt() (string, error) {
-	alt, err := Get[string](l, "name")
+	alt, err := l.GetString("name")
 	if alt == "" || err != nil {
-		alt, err = Get[string](l, "href")
+		alt, err = l.GetString("href")
+		if err != nil { return "", err }
 	}
-	return strings.TrimSpace(alt), err
+	return alt, nil
 }
 
-func (l Link) Identifier() (*url.URL, error) {
-	return nil, nil
-}
-
-// used for link prioritization, roughly
-// related to resolution
-func (l Link) rating() float64 {
-	height, err := Get[float64](l, "height")
+func (l Link) rating() uint64 {
+	height, err := l.GetNumber("height")
 	if err != nil { height = 1 }
-	width, err := Get[float64](l, "width")
+	width, err := l.GetNumber("width")
 	if err != nil { width = 1 }
 	return height * width
 }
@@ -80,11 +69,9 @@ func (l Link) Preview() (string, error) {
 	return "todo", nil
 }
 
-// TODO: must test when list only has 1 link (probably works)
-// TODO: pass in *MediaType instead of supertype
 func SelectBestLink(links []Link, supertype string) (Link, error) {
 	if len(links) == 0 {
-		return nil, errors.New("Can't select best link of type " + supertype + "/* from an empty list")
+		return Link{}, errors.New("can't select best link of type " + supertype + "/* from an empty list")
 	}
 
 	bestLink := links[0]
@@ -120,7 +107,7 @@ func SelectBestLink(links []Link, supertype string) (Link, error) {
 
 func SelectFirstLink(links []Link) (Link, error) {
 	if len(links) == 0 {
-		return nil, errors.New("can't select first Link from an empty list of links")
+		return Link{}, errors.New("can't select first Link from an empty list of links")
 	} else {
 		return links[0], nil
 	}

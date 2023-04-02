@@ -4,20 +4,12 @@ import (
 	"errors"
 	"net/url"
 	"strings"
-	"net/http"
-	"io/ioutil"
-	"encoding/json"
-	"fmt"
+	"mimicry/jtp"
 )
 
+const MAX_REDIRECTS = 20
+
 /*
-	TODO: updated plan:
-	I need a function which accepts a string (url) or dict and converts
-	it into an Item (Currently under GetContent)
-
-	I need another function which accepts a string (webfinger or url) and converts
-	it into an Item (currently under FetchUnkown)
-
 	Namings:
 	// converts a string (url) or Dict into an Item
 	FetchUnknown: any (a url.URL or Dict) -> Item
@@ -32,209 +24,148 @@ import (
 		return FetchURL: url.URL -> Item
 */
 
-var client = &http.Client{}
-
-const requiredContentType = `application/ld+json; profile="https://www.w3.org/ns/activitystreams"`
-const optionalContentType = "application/activity+json"
-
-func FetchUnknown(input any, source *url.URL) (Content, error) {
+/*
+	Converts a string (url) or Object into an Item
+	source represents where the original came from
+*/
+func FetchUnknown(input any, source *url.URL) (Item, error) {
 	switch narrowed := input.(type) {
 	case string:
-		// TODO: detect the 3 `Public` identifiers and error on them
 		url, err := url.Parse(narrowed)
 		if err != nil {
 			return nil, err
 		}
 		return FetchURL(url)
-	case Dict:
-		return Construct(narrowed, source)
+	case map[string]any:
+		return Construct(Object(narrowed), source)
 	default:
-		return nil, errors.New("Can't resolve non-string, non-Dict into Item.")
+		return nil, errors.New("can't turn non-string, non-Object into Item")
 	}
 }
 
-func FetchURL(url *url.URL) (Content, error) {
-	link := url.String()
+/*
+	converts a url into a Object
+*/
+func FetchURL(link *url.URL) (Item, error) {
+	var object Object
+	object, err := jtp.Get(
+			link,
+			`application/activity+json,` +
+			`application/ld+json; profile="https://www.w3.org/ns/activitystreams"`,
+			[]string{
+				"application/activity+json",
+				"application/ld+json",
+				"application/json",
+			},
+			MAX_REDIRECTS,
+		)
 
-	req, err := http.NewRequest("GET", link, nil) // `nil` is body
 	if err != nil {
 		return nil, err
 	}
 
-	// add the accept header, some servers only respond if the optional
-	// content type is included as well
-	// § 3.2
-	req.Header.Add("Accept", fmt.Sprintf("%s, %s", requiredContentType, optionalContentType))
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-
-	// GNU Social servers return 202 (with a correct body) instead of 200
-	if resp.StatusCode != 200 && resp.StatusCode != 202 {
-		return nil, errors.New("The server returned a status code of " + resp.Status)
-	}
-
-	// TODO: delete the pointless first if right here
-	// TODO: for the sake of static servers, accept application/json
-	//		 as well iff it contains the @context key (but double check
-	//		 that it is absolutely necessary)
-	if contentType := resp.Header.Get("Content-Type"); contentType == "" {
-		return nil, errors.New("The server's response did not contain a content type")
-
-	// TODO: accept application/ld+json, application/json, and application/activity+json as responses
-	} else if !strings.Contains(contentType, requiredContentType) && !strings.Contains(contentType, optionalContentType) {
-		return nil, errors.New("The server responded with the invalid content type of " + contentType)
-	}
-
-	var unstructured map[string]any
-	if err := json.Unmarshal(body, &unstructured); err != nil {
-		return nil, err
-	}
-
-	return Construct(unstructured, url)
+	return Construct(object, link)
 }
 
-// TODO, add a verbose debugging output mode
-// to debug problems that arise with this thing
-// looping too much and whatnot
-
-// `unstructured` is the JSON to construct from,
-// source is where the JSON was received from,
-// used to ensure the reponse is trustworthy
-func Construct(unstructured Dict, source *url.URL) (Content, error) {
-	kind, err := Get[string](unstructured, "type")
+/*
+	converts a Object into an Item
+	source is the url whence the Object came
+*/
+func Construct(object Object, source *url.URL) (Item, error) {
+	kind, err := object.GetString("type")
 	if err != nil {
 		return nil, err
 	}
 
-	// this requirement should be removed, and the below check
-	// should be checking if only type or only type and id
-	// are present on the element
-	hasIdentifier := true
-	id, err := GetURL(unstructured, "id")
-	if err != nil {
-		hasIdentifier = false
-	}
+	id, _ := object.GetURL("id")
 
-	// if the JSON came from a source (e.g. inline in another collection), with a
-	// different hostname than its ID, refetch
-	// if the JSON only has two keys (type and id), refetch
-	if (source != nil && id != nil) {
-		if (source.Hostname() != id.Hostname()) || (len(unstructured) <= 2 && hasIdentifier) {
+	if id != nil {
+		if source == nil {
+			return FetchURL(id)
+		}
+		if (source.Hostname() != id.Hostname()) || len(object) <= 2 {
 			return FetchURL(id)
 		}
 	}
 
 	switch kind {
 	case "Article", "Audio", "Document", "Image", "Note", "Page", "Video":
-		// TODO: figure out the way to do this directly
-		post := Post{}
-		post = unstructured
-		return post, nil
+		return Post{object}, nil
 
-	// case "Create":
-	// 	fallthrough
-	// case "Announce":
-	// 	fallthrough
-	// case "Dislike":
-	// 	fallthrough
-	// case "Like":
-	// 	fallthrough
-	// case "Question":
-	// 	return Activity{unstructured}, nil
+	// case "Create", "Announce", "Dislike", "Like":
+	//	return Activity(o), nil
 
 	case "Application", "Group", "Organization", "Person", "Service":
-		// TODO: nicer way to do this?
-		actor := Actor{}
-		actor = unstructured
-		return actor, nil
+		return Actor{object}, nil
 
 	case "Link":
-		link := Link{}
-		link = unstructured
-		return link, nil
+		return Link{object}, nil
 
 	case "Collection", "OrderedCollection", "CollectionPage", "OrderedCollectionPage":
-		collection := Collection{}
-		collection = Collection{unstructured, 0}
-		return collection, nil
+		return Collection{object, 0}, nil
 
 	default:
-		return nil, errors.New("Object of Type " + kind + " unsupported")
+		return nil, errors.New("ActivityPub Type " + kind + " is not supported")
 	}
 }
 
-func FetchUserInput(text string) (Content, error) {
+func FetchUserInput(text string) (Item, error) {
 	if strings.HasPrefix(text, "@") {
 		link, err := ResolveWebfinger(text)
 		if err != nil {
 			return nil, err
 		}
 		return FetchURL(link)
-	} else {
-		link, err := url.Parse(text)
-		if err != nil {
-			return nil, err
-		}
-		return FetchURL(link)
 	}
+
+	// if strings.HasPrefix(text, "/") ||
+	// 	strings.HasPrefix(text, "./") ||
+	// 	strings.HasPrefix(text, "../") {
+	// 	file, err := os.Open(text)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	var dictionary Dict
+	// 	json.NewEncoder(file).Decode(&dictionary)
+	// 	return Construct(dictionary, nil)
+	// }
+
+	link, err := url.Parse(text)
+	if err != nil {
+		return nil, err
+	}
+	return FetchURL(link)
 }
 
+/*
+	converts a webfinger identifier to a url
+	see: https://datatracker.ietf.org/doc/html/rfc7033
+*/
 func ResolveWebfinger(username string) (*url.URL, error) {
-	// description of WebFinger: https://www.rfc-editor.org/rfc/rfc7033.html
-
 	username = strings.TrimPrefix(username, "@")
-
 	split := strings.Split(username, "@")
 	var account, domain string
 	if len(split) != 2 {
 		return nil, errors.New("webfinger address must have a separating @ symbol")
-	} else {
-		account = split[0]
-		domain = split[1]
 	}
+	account = split[0]
+	domain = split[1]
 
 	query := url.Values{}
-	query.Add("resource", fmt.Sprintf("acct:%s@%s", account, domain))
+	query.Add("resource", "acct:" + account + "@" + domain)
 	query.Add("rel", "self")
 
-	link := url.URL{
+	link := &url.URL{
 		Scheme: "https",
 		Host: domain,
 		Path: "/.well-known/webfinger",
 		RawQuery: query.Encode(),
 	}
 
-	req, err := http.NewRequest("GET", link.String(), nil) // `nil` is body
-	if err != nil {
-		return nil, err
-	}
+	response, err := jtp.Get(link, "application/jrd+json", []string{"application/jrd+json"}, MAX_REDIRECTS)
+	object := Object(response)
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if resp.StatusCode != 200 {
-		return nil, errors.New(fmt.Sprintf("the server responded to the WebFinger query %s with %s", link.String(), resp.Status))
-	} else if contentType := resp.Header.Get("Content-Type"); !strings.Contains(contentType, "application/jrd+json") && !strings.Contains(contentType, "application/json") {
-		return nil, errors.New("the server responded to the WebFinger query with invalid Content-Type " + contentType)
-	}
-
-	var jrd Dict
-	if err := json.Unmarshal(body, &jrd); err != nil {
-		return nil, err
-	}
-
-	jrdLinks, err := GetList(jrd, "links")
+	jrdLinks, err := object.GetList("links")
 	if err != nil {
 		return nil, err
 	}
@@ -242,17 +173,17 @@ func ResolveWebfinger(username string) (*url.URL, error) {
 	var underlyingLink *url.URL = nil
 
 	for _, el := range jrdLinks {
-		jrdLink, ok := el.(Dict)
+		jrdLink, ok := el.(Object)
 		if ok {
-			rel, err := Get[string](jrdLink, "rel")
+			rel, err := jrdLink.GetString("rel")
 			if err != nil { continue }
 			if rel != "self" { continue }
-			mediaType, err := Get[string](jrdLink, "type")
+			mediaType, err := jrdLink.GetMediaType("type")
 			if err != nil { continue }
-			if !strings.Contains(mediaType, requiredContentType) && !strings.Contains(mediaType, optionalContentType) {
+			if !mediaType.Matches([]string{"application/jrd+json", "application/json"}) {
 				continue
 			}
-			href, err := GetURL(jrdLink, "href")
+			href, err := jrdLink.GetURL("href")
 			if err != nil { continue }
 			underlyingLink = href
 			break

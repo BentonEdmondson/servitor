@@ -5,53 +5,39 @@ import (
 	"strings"
 	"time"
 	"mimicry/style"
-	"mimicry/render"
 	"mimicry/ansi"
 )
 
-type Post Dict
-
-// TODO: go through and remove all the trims, they
-// make things less predictable
-// TODO: make the Post references *Post because why not
-
-func (p Post) Raw() Dict {
-	return p
+type Post struct {
+	Object
 }
 
-func (p Post) Kind() (string, error) {
-	kind, err := Get[string](p, "type")
-	return strings.ToLower(kind), err
+func (p Post) Kind() (string) {
+	kind, err := p.GetString("type")
+	if err != nil {
+		panic(err)
+	}
+	return strings.ToLower(kind)
 }
 
 func (p Post) Title() (string, error) {
-	title, err := GetNatural(p, "name", "en")
-	return strings.TrimSpace(title), err
+	return p.GetNatural("name", "en")
 }
 
 func (p Post) Body(width int) (string, error) {
-	body, err := GetNatural(p, "content", "en")
-	if err != nil {
-		return "", err
-	}
-	mediaType, err := Get[string](p, "mediaType")
-	if err != nil {
-		mediaType = "text/html"
-	}
-	return render.Render(body, mediaType, width)
+	return p.Render("content", "en", "mediaType", width)
 }
 
 func (p Post) Identifier() (*url.URL, error) {
-	return GetURL(p, "id")
+	return p.GetURL("id")
 }
 
 func (p Post) Created() (time.Time, error) {
-	return GetTime(p, "published")
+	return p.GetTime("published")
 }
 
-// TODO: rename to edited
-func (p Post) Updated() (time.Time, error) {
-	return GetTime(p, "updated")
+func (p Post) Edited() (time.Time, error) {
+	return p.GetTime("updated")
 }
 
 func (p Post) Category() string {
@@ -59,44 +45,63 @@ func (p Post) Category() string {
 }
 
 func (p Post) Creators() ([]Actor, error) {
-	return GetContent[Actor](p, "attributedTo")
+	return p.GetActors("attributedTo")
 }
 
 func (p Post) Recipients() ([]Actor, error) {
-	return GetContent[Actor](p, "to")
+	return p.GetActors("to")
 }
 
 func (p Post) Attachments() ([]Link, error) {
-	return GetLinksLenient(p, "attachment")
+	return p.GetLinks("attachment")
 }
 
 func (p Post) Comments() (Collection, error) {
-	replies, repliesErr := GetItem[Collection](p, "replies")
-	if repliesErr != nil {
-		comments, commentsErr := GetItem[Collection](p, "comments")
-		if commentsErr != nil {
-			return Collection{}, repliesErr
-		}
-		replies = comments
+	if p.Has("comments") && !p.Has("replies") {
+		return p.GetCollection("comments")
 	}
-	return replies, nil
+	return p.GetCollection("replies")
 }
 
 func (p Post) Link() (Link, error) {
-	kind, err := p.Kind()
+	values, err := p.GetList("url")
 	if err != nil {
-		return nil, err
+		return Link{}, err
+	}
+	
+	links := make([]Link, 0, len(values))
+
+	for _, el := range values {
+		switch narrowed := el.(type) {
+		case string:
+			link := Link{Object{
+				"type": "Link",
+				"href": narrowed,
+			}}
+			if name, err := p.GetNatural("name", "en"); err == nil {
+				link.Object["name"] = name
+			}
+			if !p.HasNatural("content") {
+				if mediaType, err := p.GetString("mediaType"); err == nil {
+					link.Object["mediaType"] = mediaType
+				}
+			}
+			links = append(links, link)
+		case Object:
+			source, _ := p.GetURL("id")
+			item, err := Construct(narrowed, source)
+			if err != nil { continue }
+			if asLink, isLink := item.(Link); isLink {
+				links = append(links, asLink)
+			}
+		}
 	}
 
-	links, err := GetLinksStrict(p, "url")
-	if err != nil {
-		return nil, err
-	}
-
+	kind := p.Kind()
 	switch kind {
 	case "audio", "image", "video":
 		return SelectBestLink(links, kind)
-	default: // "article", "document", "note", "page":
+	default:
 		return SelectFirstLink(links)
 	}
 }
@@ -108,9 +113,7 @@ func (p Post) header(width int) (string, error) {
 		output += style.Bold(title) + "\n"
 	}
 
-	if kind, err := p.Kind(); err == nil {
-		output += style.Color(kind)
-	}
+	output += style.Color(p.Kind())
 
 	if creators, err := p.Creators(); err == nil {
 		names := []string{}
@@ -206,8 +209,6 @@ func (p Post) Preview() (string, error) {
 		output += ansi.Snip(body, width, 4, style.Color("\u2026"))
 		output += "\n"
 	}
-
-	// TODO: there should probably be attachments here
 
 	return output, nil
 }
