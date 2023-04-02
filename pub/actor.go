@@ -1,4 +1,4 @@
-package kinds
+package pub
 
 import (
 	"strings"

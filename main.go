@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"mimicry/kinds"
+	"mimicry/pub"
 	"os"
 	"encoding/json"
 )
@@ -18,7 +18,7 @@ func main() {
 	link := os.Args[len(os.Args)-1]
 	command := os.Args[1]
 
-	item, err := kinds.FetchUserInput(link)
+	item, err := pub.FetchUserInput(link)
 	if err != nil {
 		panic(err)
 	}
@@ -31,7 +31,7 @@ func main() {
 		return
 	}
 
-	// if narrowed, ok := content.(kinds.Post); ok {
+	// if narrowed, ok := content.(pub.Post); ok {
 	// 	if str, err := narrowed.Preview(); err != nil {
 	// 		panic(err)
 	// 	} else {

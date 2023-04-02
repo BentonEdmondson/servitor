@@ -1,4 +1,4 @@
-package kinds
+package pub
 
 type Item interface {
 	String(width int) (string, error)
