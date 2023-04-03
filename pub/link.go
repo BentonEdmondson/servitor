@@ -10,7 +10,7 @@ type Link struct {
 }
 
 func (l Link) Kind() string {
-	return "link"
+	return "Link"
 }
 func (l Link) Category() string {
 	return "link"

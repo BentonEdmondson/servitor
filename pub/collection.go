@@ -16,7 +16,7 @@ type Collection struct {
 func (c Collection) Kind() string {
 	kind, err := c.GetString("type")
 	if err != nil { panic(err) }
-	return strings.ToLower(kind)
+	return kind
 }
 
 func (c Collection) Category() string {
@@ -103,7 +103,7 @@ func (c *Collection) Current() (Item, error) {
 	if len(items) == 0 {
 		kind := c.Kind()
 		/* If it is a collection, get the first page */
-		if kind == "collection" || kind == "orderedcollection" {
+		if kind == "Collection" || kind == "OrderedCollection" {
 			first, firstErr := c.GetCollection("first")
 			if firstErr != nil {
 				return nil, nil

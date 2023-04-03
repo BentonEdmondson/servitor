@@ -1,7 +1,6 @@
 package pub
 
 import (
-	"strings"
 	"net/url"
 	"mimicry/style"
 )
@@ -15,7 +14,7 @@ func (a Actor) Kind() string {
 	if err != nil {
 		panic(err)
 	}
-	return strings.ToLower(kind)
+	return kind
 }
 
 func (a Actor) Name() (string, error) {

@@ -183,5 +183,5 @@ func (o Object) Render(contentKey string, langKey string, mediaTypeKey string, w
 		mediaType, err = o.GetMediaType(mediaTypeKey)
 		if err != nil { return "", err }
 	}
-	return render.Render(body, mediaType, width)
+	return render.Render(body, mediaType.Full, width)
 }

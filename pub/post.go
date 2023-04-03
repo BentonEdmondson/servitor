@@ -17,7 +17,7 @@ func (p Post) Kind() (string) {
 	if err != nil {
 		panic(err)
 	}
-	return strings.ToLower(kind)
+	return kind
 }
 
 func (p Post) Title() (string, error) {
@@ -99,8 +99,8 @@ func (p Post) Link() (Link, error) {
 
 	kind := p.Kind()
 	switch kind {
-	case "audio", "image", "video":
-		return SelectBestLink(links, kind)
+	case "Audio", "Image", "Video":
+		return SelectBestLink(links, strings.ToLower(kind))
 	default:
 		return SelectFirstLink(links)
 	}
@@ -189,8 +189,6 @@ func (p Post) String(width int) (string, error) {
 		} else {
 			return "", err
 		}
-	} else {
-		return "", err
 	}
 
 	return output, nil

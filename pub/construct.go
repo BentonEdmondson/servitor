@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"strings"
 	"mimicry/jtp"
+	"os"
+	"encoding/json"
 )
 
 const MAX_REDIRECTS = 20
@@ -118,17 +120,17 @@ func FetchUserInput(text string) (Item, error) {
 		return FetchURL(link)
 	}
 
-	// if strings.HasPrefix(text, "/") ||
-	// 	strings.HasPrefix(text, "./") ||
-	// 	strings.HasPrefix(text, "../") {
-	// 	file, err := os.Open(text)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	var dictionary Dict
-	// 	json.NewEncoder(file).Decode(&dictionary)
-	// 	return Construct(dictionary, nil)
-	// }
+	if strings.HasPrefix(text, "/") ||
+		strings.HasPrefix(text, "./") ||
+		strings.HasPrefix(text, "../") {
+		file, err := os.Open(text)
+		if err != nil {
+			return nil, err
+		}
+		var object Object
+		json.NewDecoder(file).Decode(&object)
+		return Construct(object, nil)
+	}
 
 	link, err := url.Parse(text)
 	if err != nil {
