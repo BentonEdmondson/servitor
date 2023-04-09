@@ -5,7 +5,7 @@ import (
 )
 
 func TestDefault(t *testing.T) {
-	m := New()
+	m := Default()
 	if m.Essence != "text/html" {
 		t.Fatalf(`Default media type should be "text/html", not %#v`, m.Essence)
 	}
@@ -30,7 +30,7 @@ func TestFailedParse(t *testing.T) {
 }
 
 func TestSuccessfulUpdate(t *testing.T) {
-	m := New()
+	m := Default()
 	err := m.Update("application/json ; charset=utf-8")
 	if err != nil {
 		t.Fatalf("Update should have succeeded but returned error: %#v", err)
@@ -47,7 +47,7 @@ func TestSuccessfulUpdate(t *testing.T) {
 }
 
 func TestFailedUpdate(t *testing.T) {
-	m := New()
+	m := Default()
 	err := m.Update("no slash")
 	if err == nil {
 		t.Fatalf(`Expected "no slash" to result in an Update error, but it resulted in: %#v`, m)
@@ -55,7 +55,7 @@ func TestFailedUpdate(t *testing.T) {
 }
 
 func TestMatchesSuccess(t *testing.T) {
-	m := New()
+	m := Default()
 	matches := m.Matches([]string{"application/json", "text/html"})
 	if !matches {
 		t.Fatalf(`Expected media type to match text/html but it did not: %#v`, m)
@@ -63,7 +63,7 @@ func TestMatchesSuccess(t *testing.T) {
 }
 
 func TestMatchesFailure(t *testing.T) {
-	m := New()
+	m := Default()
 	matches := m.Matches([]string{"application/json"})
 	if matches {
 		t.Fatalf(`Expected media type to not match application/json: %#v`, m)

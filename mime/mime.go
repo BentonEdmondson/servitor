@@ -16,7 +16,7 @@ type MediaType struct {
 */
 var re = regexp.MustCompile(`(?s)^(([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)/([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)).*$`)
 
-func New() *MediaType {
+func Default() *MediaType {
 	return &MediaType {
 		Essence: "text/html",
 		Supertype: "text",
