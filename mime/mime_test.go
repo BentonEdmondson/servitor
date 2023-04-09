@@ -33,7 +33,7 @@ func TestSuccessfulUpdate(t *testing.T) {
 	m := Default()
 	err := m.Update("application/json ; charset=utf-8")
 	if err != nil {
-		t.Fatalf("Update should have succeeded but returned error: %#v", err)
+		t.Fatalf("Update should have succeeded but returned error: %v", err)
 	}
 	if m.Essence != "application/json" {
 		t.Fatalf(`New media type should be "application/json", not %#v`, m.Essence)
