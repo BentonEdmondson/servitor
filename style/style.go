@@ -44,6 +44,10 @@ func Color(text string) string {
 	return foreground(text, 164, 245, 155)
 }
 
+func Problem(text error) string {
+	return foreground(text.Error(), 156, 53, 53)
+}
+
 func Link(text string) string {
 	return Underline(Color(text))
 }
