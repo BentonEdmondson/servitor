@@ -55,7 +55,6 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 		"GET " + link.RequestURI() + " HTTP/1.0\r\n" +
 		"Host: " + link.Host + "\r\n" +
 		"Accept: " + accept + "\r\n" +
-		"Accept-Encoding: identity\r\n" +
 		"\r\n",
 	))
 	if err != nil {
