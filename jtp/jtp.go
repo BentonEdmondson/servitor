@@ -43,6 +43,7 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 		port = "443"
 	}
 
+	// TODO: link.Host may work instead of needing net.JoinHostPort
 	hostport := net.JoinHostPort(link.Hostname(), port)
 
 	connection, err := dialer.Dial("tcp", hostport)
