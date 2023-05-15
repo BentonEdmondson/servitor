@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"time"
 	"mimicry/mime"
-	"mimicry/render"
 	"fmt"
 )
 
@@ -19,7 +18,7 @@ var (
 /* Go doesn't allow generic methods */
 func getPrimitive[T any](o Object, key string) (T, error) {
 	var zero T
-	if value, ok := o[key]; !ok {
+	if value, ok := o[key]; !ok || value == nil {
 		return zero, fmt.Errorf("failed to extract \"%s\": %w", key, ErrKeyNotPresent)
 	} else if narrowed, ok := value.(T); !ok {
 		return zero, fmt.Errorf("failed to extract \"%s\": %w: is %T", key, ErrKeyWrongType, value)
@@ -28,10 +27,15 @@ func getPrimitive[T any](o Object, key string) (T, error) {
 	}
 }
 
+func (o Object) GetAny(key string) (any, error) {
+	return getPrimitive[any](o, key)
+}
+
 func (o Object) GetString(key string) (string, error) {
 	return getPrimitive[string](o, key)
 }
 
+// TODO: should probably error for non-uints
 func (o Object) GetNumber(key string) (uint64, error) {
 	if number, err := getPrimitive[float64](o, key); err != nil {
 		return 0, err
@@ -45,7 +49,7 @@ func (o Object) GetObject(key string) (Object, error) {
 }
 
 func (o Object) GetList(key string) ([]any, error) {
-	if value, err := getPrimitive[any](o, key); err != nil {
+	if value, err := o.GetAny(key); err != nil {
 		return nil, err
 	} else if asList, isList := value.([]any); isList {
 		return asList, nil
@@ -123,28 +127,4 @@ func (o Object) GetNatural(key string, language string) (string, error) {
 	}
 
 	return "", fmt.Errorf("failed to extract natural \"%s\": %w", key, ErrKeyNotPresent)
-}
-
-func (o Object) Has(key string) bool {
-	_, present := o[key]
-	return present
-}
-func (o Object) HasNatural(key string) bool {
-	return o.Has(key) || o.Has(key+"Map")
-}
-
-func (o Object) Render(contentKey string, langKey string, mediaTypeKey string, width int) (string, error) {
-	body, err := o.GetNatural(contentKey, langKey)
-	if err != nil {
-		return "", err
-	}
-	mediaType, err := o.GetMediaType(mediaTypeKey)
-	if err != nil {
-		if errors.Is(err, ErrKeyNotPresent) {
-			mediaType = mime.Default()
-		} else {
-			return "", nil
-		}
-	}
-	return render.Render(body, mediaType.Essence, width)
 }

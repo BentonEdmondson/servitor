@@ -2,47 +2,48 @@ package main
 
 import (
 	"fmt"
-	"mimicry/pub"
 	"os"
-	"encoding/json"
+	"golang.org/x/term"
+	"strings"
+	"mimicry/ui"
+	"log"
 )
 
-// TODO: when returning errors, use zero value for return
-// also change all error messages to using sprintf-style
-// formatting, all lowercase, and no punctuation
-
-// TODO: get rid of Raw, just use jtp.Get and then stringify the result
+// TODO: clean up most panics
 
 func main() {
-
-	link := os.Args[len(os.Args)-1]
-	command := os.Args[1]
-
-	item, err := pub.FetchUserInput(link)
-	if err != nil {
-		panic(err)
+	if len(os.Args) != 2 { 
+		panic("must provide 2 arguments")
 	}
+	oldTerminal, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil { panic(err) }
+	defer term.Restore(int(os.Stdin.Fd()), oldTerminal)
+	width, heightInt, err := term.GetSize(int(os.Stdin.Fd()))
+	if err != nil { panic(err) }
+	height := uint(heightInt)
+	log.Printf("h, w: %v, %v", height, width)
+	printRaw("")
 
-	if command == "raw" {
-		enc := json.NewEncoder(os.Stdout)
-		if err := enc.Encode(item); err != nil {
-			panic(err)
+	state := ui.Start(os.Args[1])
+	printRaw(state.View(width, height))
+
+	buffer := make([]byte, 1)
+	for {
+		os.Stdin.Read(buffer)
+		input := buffer[0]
+
+		if input == 3 /*(ctrl+c)*/ || input == 'q' {
+			printRaw("")
+			return
 		}
-		return
-	}
 
-	// if narrowed, ok := content.(pub.Post); ok {
-	// 	if str, err := narrowed.Preview(); err != nil {
-	// 		panic(err)
-	// 	} else {
-	// 		fmt.Print(str)
-	// 	}
-	// 	return
-	// }
-
-	if str, err := item.String(90); err != nil {
-		panic(err)
-	} else {
-		fmt.Print(str)
+		state.Update(input)
+		printRaw(state.View(width, height))
 	}
+}
+
+func printRaw(output string) {
+	output = strings.ReplaceAll(output, "\n", "\r\n")
+	_, err := fmt.Print("\x1b[2J\x1b[0;0H" + output)
+	if err != nil { panic(err) }
 }

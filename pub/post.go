@@ -6,207 +6,257 @@ import (
 	"time"
 	"mimicry/style"
 	"mimicry/ansi"
+	"mimicry/object"
+	"errors"
+	"mimicry/client"
+	"fmt"
+	"golang.org/x/exp/slices"
+	"mimicry/mime"
+	"mimicry/render"
 )
 
 type Post struct {
-	Object
+	kind string
+	identifier *url.URL
+
+	title string
+	titleErr error
+	body string
+	bodyErr error
+	mediaType *mime.MediaType
+	mediaTypeErr error
+	link *Link
+	linkErr error
+	created time.Time
+	createdErr error
+	edited time.Time
+	editedErr error
+	parent any
+	parentErr error
+
+	// just as body dies completely if members die,
+	// attachments dies completely if any member dies
+	attachments []*Link
+	attachmentsErr error
+
+	creators []TangibleWithName
+	recipients []TangibleWithName
+	comments *Collection
+	commentsErr error
 }
 
-func (p Post) Kind() (string) {
-	kind, err := p.GetString("type")
-	if err != nil {
-		panic(err)
+func NewPost(input any, source *url.URL) (*Post, error) {
+	p := &Post{}
+	var o object.Object; var err error
+	o, p.identifier, err = client.FetchUnknown(input, source)
+	if err != nil { return nil, err }
+	if p.kind, err = o.GetString("type"); err != nil {
+		return nil, err
 	}
-	return kind
-}
 
-func (p Post) Title() (string, error) {
-	return p.GetNatural("name", "en")
-}
-
-func (p Post) Body(width int) (string, error) {
-	return p.Render("content", "en", "mediaType", width)
-}
-
-func (p Post) Identifier() (*url.URL, error) {
-	return p.GetURL("id")
-}
-
-func (p Post) Created() (time.Time, error) {
-	return p.GetTime("published")
-}
-
-func (p Post) Edited() (time.Time, error) {
-	return p.GetTime("updated")
-}
-
-func (p Post) Category() string {
-	return "post"
-}
-
-func (p Post) Creators() ([]Actor, error) {
-	return p.GetActors("attributedTo")
-}
-
-func (p Post) Recipients() ([]Actor, error) {
-	return p.GetActors("to")
-}
-
-func (p Post) Attachments() ([]Link, error) {
-	return p.GetLinks("attachment")
-}
-
-func (p Post) Comments() (Collection, error) {
-	if p.Has("comments") && !p.Has("replies") {
-		return p.GetCollection("comments")
+	// TODO: for Lemmy, may have to auto-unwrap Create into a Post
+	if !slices.Contains([]string{
+		"Article", "Audio", "Document", "Image", "Note", "Page", "Video",
+	}, p.kind) {
+		return nil, fmt.Errorf("%w: %s is not a Post", ErrWrongType, p.kind)
 	}
-	return p.GetCollection("replies")
+
+	p.title, p.titleErr = o.GetNatural("name", "en")
+	p.body, p.bodyErr = o.GetNatural("content", "en")
+	p.mediaType, p.mediaTypeErr = o.GetMediaType("mediaType")
+	p.created, p.createdErr = o.GetTime("published")
+	p.edited, p.editedErr = o.GetTime("updated")
+	p.parent, p.parentErr = o.GetAny("inReplyTo")
+	
+	if p.kind == "Image" || p.kind == "Audio" || p.kind == "Video" {
+		p.link, p.linkErr = getBestLinkShorthand(o, "url", strings.ToLower(p.kind))
+	} else {
+		p.link, p.linkErr = getFirstLinkShorthand(o, "url")
+	}
+
+	// TODO: perhaps the actor fraud check should occur right here--if
+	// all fail, the entire constructor fails? Probably not, what if
+	// one fails because of the protocol, another fails because of fraud
+	// check, I probably want to show the whole thing
+	p.creators = getActors(o, "attributedTo", p.identifier)
+	p.recipients = getActors(o, "audience", p.identifier)
+	p.attachments, p.attachmentsErr = getLinks(o, "attachment")
+
+	// TODO: in the future, I may want to pass an assertion to the collection
+	// asserting that the posts therein do reply to this post
+	p.comments, p.commentsErr = getCollection(o, "replies", p.identifier)
+	if errors.Is(p.commentsErr, object.ErrKeyNotPresent) {
+		p.comments, p.commentsErr = getCollection(o, "comments", p.identifier)
+	}
+	return p, nil
 }
 
-func (p Post) Link() (Link, error) {
-	values, err := p.GetList("url")
+func (p *Post) Kind() (string) {
+	return p.kind
+}
+
+func (p *Post) Children(quantity uint) ([]Tangible, Container, uint) {
+	if errors.Is(p.commentsErr, object.ErrKeyNotPresent) {
+		return []Tangible{}, nil, 0
+	}
+	if p.commentsErr != nil {
+		return []Tangible{
+			NewFailure(p.commentsErr),
+		}, nil, 0
+	}
+	return p.comments.Harvest(quantity, 0)
+}
+
+func (p *Post) Parents(quantity uint) []Tangible {
+	if quantity == 0 {
+		return []Tangible{}
+	}
+	if errors.Is(p.parentErr, object.ErrKeyNotPresent) {
+		return []Tangible{}
+	}
+	if p.parentErr != nil {
+		return []Tangible{NewFailure(p.parentErr)}
+	}
+	fetchedParent, fetchedParentErr := NewPost(p.parent, p.identifier)
+	if fetchedParentErr != nil {
+		return []Tangible{NewFailure(fetchedParentErr)}
+	}
+	return append([]Tangible{fetchedParent}, fetchedParent.Parents(quantity - 1)...)
+}
+
+func (p *Post) header(width int) string {
+	output := ""
+
+	if p.titleErr == nil {
+		output += style.Bold(p.title) + "\n"
+	} else if !errors.Is(p.titleErr, object.ErrKeyNotPresent) {
+		output += style.Problem(fmt.Errorf("failed to get title: %w", p.titleErr)) + "\n"
+	}
+
+	output += style.Color(strings.ToLower(p.kind))
+
+	if len(p.creators) > 0 {
+		output += " by "
+		for i, creator := range p.creators {
+			output += style.Color(creator.Name())
+			if i != len(p.creators) - 1 {
+				output += ", "
+			}
+		}
+	}
+	if len(p.recipients) > 0 {
+		output += " to "
+		for i, recipient := range p.recipients {
+			output += style.Color(recipient.Name())
+			if i != len(p.recipients) - 1 {
+				output += ", "
+			}
+		}
+	}
+
+	if p.createdErr != nil && !errors.Is(p.createdErr, object.ErrKeyNotPresent) {
+		output += " at " + style.Problem(p.createdErr)
+	} else {
+		output += " at " + style.Color(p.created.Format(timeFormat))
+	}
+
+	return ansi.Wrap(output, width)
+}
+
+func (p *Post) center(width int) (string, bool) {
+	if errors.Is(p.bodyErr, object.ErrKeyNotPresent) {
+		return "", false
+	}
+	if p.bodyErr != nil {
+		return ansi.Wrap(style.Problem(p.bodyErr), width), true
+	}
+
+	mediaType := p.mediaType
+	if errors.Is(p.mediaTypeErr, object.ErrKeyNotPresent) {
+		mediaType = mime.Default()
+	} else if p.mediaTypeErr != nil {
+		return ansi.Wrap(style.Problem(p.mediaTypeErr), width), true
+	}
+
+	rendered, err := render.Render(p.body, mediaType.Essence, width)
 	if err != nil {
-		return Link{}, err
+		return style.Problem(err), true
+	}
+	return rendered, true
+}
+
+func (p *Post) supplement(width int) (string, bool) {
+	if errors.Is(p.attachmentsErr, object.ErrKeyNotPresent) {
+		return "", false
+	}
+	if p.attachmentsErr != nil {
+		return ansi.Wrap(style.Problem(fmt.Errorf("failed to load attachments: %w", p.attachmentsErr)), width), true
+	}
+	if len(p.attachments) == 0 {
+		return "", false
+	}
+
+	output := ""
+	for _, attachment := range p.attachments {
+		if output != "" { output += "\n" }
+		link, err := NewLink(attachment)
+		if err != nil {
+			output += style.Problem(err)
+			continue
+		}
+		alt, err := link.Alt()
+		if err != nil {
+			output += style.Problem(err)
+			continue
+		}
+		output += style.LinkBlock(alt)
+	}
+	return ansi.Wrap(output, width), true
+}
+
+func (p *Post) footer(width int) string {
+	if errors.Is(p.commentsErr, object.ErrKeyNotPresent) {
+		return style.Color("comments disabled")
+	} else if p.commentsErr != nil {
+		return style.Color("comments enabled")
+	} else if quantity, err := p.comments.Size(); errors.Is(err, object.ErrKeyNotPresent) {
+		return style.Color("comments enabled")
+	} else if err != nil {
+		return style.Problem(err)
+	} else if quantity == 1 {
+		return style.Color(fmt.Sprintf("%d comment", quantity))
+	} else {
+		return style.Color(fmt.Sprintf("%d comments", quantity))
+	}
+}
+
+func (p Post) String(width int) string {
+	output := p.header(width)
+
+	if body, present := p.center(width - 4); present {
+		output += "\n\n" + ansi.Indent(body, "  ", true)
+	}
+
+	if attachments, present := p.supplement(width - 4); present {
+		output += "\n\n" + ansi.Indent(attachments, "  ", true)
 	}
 	
-	links := make([]Link, 0, len(values))
+	output += "\n\n" + p.footer(width)
 
-	for _, el := range values {
-		switch narrowed := el.(type) {
-		case string:
-			link := Link{Object{
-				"type": "Link",
-				"href": narrowed,
-			}}
-			if name, err := p.GetNatural("name", "en"); err == nil {
-				link.Object["name"] = name
-			}
-			if !p.HasNatural("content") {
-				if mediaType, err := p.GetString("mediaType"); err == nil {
-					link.Object["mediaType"] = mediaType
-				}
-			}
-			links = append(links, link)
-		case Object:
-			source, _ := p.GetURL("id")
-			item, err := Construct(narrowed, source)
-			if err != nil { continue }
-			if asLink, isLink := item.(Link); isLink {
-				links = append(links, asLink)
-			}
-		}
-	}
-
-	kind := p.Kind()
-	switch kind {
-	case "Audio", "Image", "Video":
-		return SelectBestLink(links, strings.ToLower(kind))
-	default:
-		return SelectFirstLink(links)
-	}
+	return output
 }
 
-func (p Post) header(width int) (string, error) {
-	output := ""
+func (p *Post) Preview(width int) string {
+	output := p.header(width)
 
-	if title, err := p.Title(); err == nil {
-		output += style.Bold(title) + "\n"
-	}
-
-	output += style.Color(p.Kind())
-
-	if creators, err := p.Creators(); err == nil {
-		names := []string{}
-		for _, creator := range creators {
-			if name, err := creator.InlineName(); err == nil {
-				names = append(names, style.Link(name))
-			}
-		}
-		if len(names) > 0 {
-			output += " by " + strings.Join(names, ", ")
-		}
-	}
-
-	if recipients, err := p.Recipients(); err == nil {
-		names := []string{}
-		for _, recipient := range recipients {
-			if name, err := recipient.InlineName(); err == nil {
-				names = append(names, style.Link(name))
-			}
-		}
-		if len(names) > 0 {
-			output += " to " + strings.Join(names, ", ")
-		}
-	}
-
-	if created, err := p.Created(); err == nil {
-		const timeFormat = "3:04 pm on 2 Jan 2006"
-		output += " at " + style.Color(created.Format(timeFormat))
-		// if edited, err := p.Updated(); err == nil {
-		// 	output += " (edited at " + style.Color(edited.Format(timeFormat)) + ")"
-		// }
-	}
-
-	return ansi.Wrap(output, width), nil
-}
-
-func (p Post) String(width int) (string, error) {
-	output := ""
-
-	if header, err := p.header(width - 4); err == nil {
-		output += ansi.Indent(header, "  ", true)
-		output += "\n\n"
-	}
-
-	if body, err := p.Body(width - 8); err == nil {
-		output += ansi.Indent(body, "    ", true)
-		output += "\n\n"
-	}
-
-	if attachments, err := p.Attachments(); err == nil {
-		if len(attachments) > 0 {
-			section := "Attachments:\n"
-			names := []string{}
-			for _, attachment := range attachments {
-				if name, err := attachment.String(width); err == nil {
-					names = append(names, style.Link(name))
-				}
-			}
-			section += ansi.Indent(ansi.Wrap(strings.Join(names, "\n"), width - 4), "  ", true)
-			section = ansi.Indent(ansi.Wrap(section, width - 2), "  ", true)
-			output += section
-			output += "\n"
-		}
-	}
-
-	if comments, err := p.Comments(); err == nil {
-		if size, err := comments.Size(); err == nil {
-			output += ansi.Indent(ansi.Wrap("with " + style.Color(size + " comments"), width - 2), "  ", true)
-			output += "\n\n"
-		}
-		if section, err := comments.String(width); err == nil {
-			output += section + "\n"
+	if body, present := p.center(width); present {
+		if attachments, present := p.supplement(width); present {
+			output += "\n" + ansi.Snip(body + "\n" + attachments, width, 4, style.Color("\u2026"))
 		} else {
-			return "", err
+			output += "\n" + ansi.Snip(body, width, 4, style.Color("\u2026"))
 		}
 	}
 
-	return output, nil
-}
-
-func (p Post) Preview() (string, error) {
-	output := ""
-	width := 100
-
-	if header, err := p.header(width); err == nil {
-		output += header
-		output += "\n"
-	}
-
-	if body, err := p.Body(width); err == nil {
-		output += ansi.Snip(body, width, 4, style.Color("\u2026"))
-		output += "\n"
-	}
-
-	return output, nil
+	output += "\n" + p.footer(width)
+	return output
 }
