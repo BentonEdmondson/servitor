@@ -183,3 +183,83 @@ func TestSnip(t *testing.T) {
 		util.AssertEqual(test.Expected, output, t)
 	}	
 }
+
+func TestCenterVertically(t *testing.T) {
+	tests := []struct {
+		prefix string
+		centered string
+		suffix string
+		height uint
+		output string
+	}{
+		// normal case
+		{
+			"p1\np2",
+			"c1\nc2",
+			"s1\ns2",
+			6,
+			"p1\np2\nc1\nc2\ns1\ns2",
+		},
+
+		// offset center with even height
+		{
+			"p1",
+			"c1",
+			"s1\ns2",
+			4,
+			"p1\nc1\ns1\ns2",
+		},
+
+		// offset center with odd height
+		{
+			"p1",
+			"c1\nc2",
+			"s1\ns2",
+			5,
+			"p1\nc1\nc2\ns1\ns2",
+		},
+
+		// trimmed top
+		{
+			"p1\np2",
+			"c1\nc2",
+			"s1",
+			4,
+			"p2\nc1\nc2\ns1",
+		},
+
+		// buffered top (with offset)
+		{
+			"p1",
+			"c1",
+			"s1\ns2\ns3",
+			6,
+			"\np1\nc1\ns1\ns2\ns3",
+		},
+
+		// trimmed bottom
+		{
+			"p1",
+			"c1",
+			"s1\ns2",
+			3,
+			"p1\nc1\ns1",
+		},
+
+		// buffered bottom
+		{
+			"p1",
+			"c1",
+			"",
+			3,
+			"p1\nc1\n",
+		},
+	}
+
+	for i, test := range tests {
+		actual := CenterVertically(test.prefix, test.centered, test.suffix, test.height)
+		if test.output != actual {
+			t.Fatalf("Expected %v but received %v for test %v", test.output, actual, i)
+		}
+	}
+}

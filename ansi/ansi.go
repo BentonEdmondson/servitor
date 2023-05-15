@@ -209,7 +209,7 @@ func DumbWrap(text string, width int) string {
 
 /*
 	Limits `text` to the given `height` and `width`, adding an
-	ellipsis to the end
+	ellipsis to the end and omitting trailing whitespace-only lines
 */
 // TODO: this function could be optimized into just one loop
 func Snip(text string, width, height int, ellipsis string) string {
@@ -261,6 +261,34 @@ func lineIsOnlyWhitespace(expanded [][]string) bool {
 	}
 
 	return true
+}
+
+func Height(text string) uint {
+	return uint(strings.Count(text, "\n")) + 1
+}
+
+func CenterVertically(prefix, centered, suffix string, height uint) string {
+	prefixHeight, centeredHeight, suffixHeight := Height(prefix), Height(centered), Height(suffix)
+	if height < centeredHeight {
+		panic("screen is too small to vertically center text within it")
+	}
+	totalBufferSize := height - centeredHeight
+	topBufferSize := totalBufferSize / 2
+	bottomBufferSize := topBufferSize + totalBufferSize % 2
+
+	if topBufferSize > prefixHeight {
+		prefix = strings.Repeat("\n", int(topBufferSize - prefixHeight)) + prefix
+	} else if topBufferSize < prefixHeight {
+		prefix = strings.Join(strings.Split(prefix, "\n")[prefixHeight-topBufferSize:], "\n")
+	}
+
+	if bottomBufferSize > suffixHeight {
+		suffix += strings.Repeat("\n", int(bottomBufferSize - suffixHeight))
+	} else if bottomBufferSize < suffixHeight {
+		suffix = strings.Join(strings.Split(suffix, "\n")[:bottomBufferSize], "\n")
+	}
+
+	return prefix + "\n" + centered + "\n" + suffix
 }
 
 /*
