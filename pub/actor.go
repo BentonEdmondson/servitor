@@ -34,10 +34,15 @@ type Actor struct {
 }
 
 func NewActor(input any, source *url.URL) (*Actor, error) {
-	a := &Actor{}
-	var o object.Object; var err error
-	o, a.id, err = client.FetchUnknown(input, source)
+	o, id, err := client.FetchUnknown(input, source)
 	if err != nil { return nil, err }
+	return NewActorFromObject(o, id)
+}
+
+func NewActorFromObject(o object.Object, id *url.URL) (*Actor, error) {
+	a := &Actor{}
+	a.id = id
+	var err error
 	if a.kind, err = o.GetString("type"); err != nil {
 		return nil, err
 	}

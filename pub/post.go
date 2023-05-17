@@ -17,7 +17,7 @@ import (
 
 type Post struct {
 	kind string
-	identifier *url.URL
+	id *url.URL
 
 	title string
 	titleErr error
@@ -46,10 +46,15 @@ type Post struct {
 }
 
 func NewPost(input any, source *url.URL) (*Post, error) {
-	p := &Post{}
-	var o object.Object; var err error
-	o, p.identifier, err = client.FetchUnknown(input, source)
+	o, id, err := client.FetchUnknown(input, source)
 	if err != nil { return nil, err }
+	return NewPostFromObject(o, id)
+}
+
+func NewPostFromObject(o object.Object, id *url.URL) (*Post, error) {
+	p := &Post{}
+	p.id = id
+	var err error
 	if p.kind, err = o.GetString("type"); err != nil {
 		return nil, err
 	}
@@ -78,15 +83,15 @@ func NewPost(input any, source *url.URL) (*Post, error) {
 	// all fail, the entire constructor fails? Probably not, what if
 	// one fails because of the protocol, another fails because of fraud
 	// check, I probably want to show the whole thing
-	p.creators = getActors(o, "attributedTo", p.identifier)
-	p.recipients = getActors(o, "audience", p.identifier)
+	p.creators = getActors(o, "attributedTo", p.id)
+	p.recipients = getActors(o, "audience", p.id)
 	p.attachments, p.attachmentsErr = getLinks(o, "attachment")
 
 	// TODO: in the future, I may want to pass an assertion to the collection
 	// asserting that the posts therein do reply to this post
-	p.comments, p.commentsErr = getCollection(o, "replies", p.identifier)
+	p.comments, p.commentsErr = getCollection(o, "replies", p.id)
 	if errors.Is(p.commentsErr, object.ErrKeyNotPresent) {
-		p.comments, p.commentsErr = getCollection(o, "comments", p.identifier)
+		p.comments, p.commentsErr = getCollection(o, "comments", p.id)
 	}
 	return p, nil
 }
@@ -117,7 +122,7 @@ func (p *Post) Parents(quantity uint) []Tangible {
 	if p.parentErr != nil {
 		return []Tangible{NewFailure(p.parentErr)}
 	}
-	fetchedParent, fetchedParentErr := NewPost(p.parent, p.identifier)
+	fetchedParent, fetchedParentErr := NewPost(p.parent, p.id)
 	if fetchedParentErr != nil {
 		return []Tangible{NewFailure(fetchedParentErr)}
 	}

@@ -19,10 +19,15 @@ type Activity struct {
 }
 
 func NewActivity(input any, source *url.URL) (*Activity, error) {
-	a := &Activity{}
-	var err error; var o object.Object
-	o, a.id, err = client.FetchUnknown(input, source)
+	o, id, err := client.FetchUnknown(input, source)
 	if err != nil { return nil, err }
+	return NewActivityFromObject(o, id)
+}
+
+func NewActivityFromObject(o object.Object, id *url.URL) (*Activity, error) {
+	a := &Activity{}
+	a.id = id
+	var err error
 	if a.kind, err = o.GetString("type"); err != nil {
 		return nil, err
 	}

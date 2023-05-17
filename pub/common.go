@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"errors"
 	"net/url"
+	"mimicry/client"
 )
 
 var (
@@ -76,17 +77,37 @@ func getPostOrActor(o object.Object, key string, source *url.URL) Tangible {
 		return NewFailure(err)
 	}
 
-	// TODO: add special case for lemmy where a json object with
-	// type Create is automatically unwrapped right here
-
-	var fetched Tangible
-	fetched, err = NewActor(reference, source)
-	if errors.Is(err, ErrWrongType) {
-		fetched, err = NewPost(reference, source)
+	/* For Lemmy compatibility, automatically unwrap if the entry is an
+	   inline Create type */
+	if asMap, ok := reference.(map[string]any); ok {
+		o := object.Object(asMap)
+		kind, err := o.GetString("type")
+		if err != nil { return NewFailure(err) }
+		if kind == "Create" {
+			reference, err = o.GetAny("object")
+			if err != nil { return NewFailure(err) }
+		}
 	}
+
+	o, id, err := client.FetchUnknown(reference, source)
 	if err != nil {
 		return NewFailure(err)
 	}
+
+	var fetched Tangible
+	var postErr, actorErr error
+	fetched, postErr = NewPostFromObject(o, id)
+	if errors.Is(postErr, ErrWrongType) {
+		fetched, actorErr = NewActorFromObject(o, id)
+		if errors.Is(actorErr, ErrWrongType) {
+			return NewFailure(fmt.Errorf("%w, %w", postErr, actorErr))
+		} else if actorErr != nil {
+			return NewFailure(actorErr)
+		}
+	} else if postErr != nil {
+		return NewFailure(postErr)
+	}
+
 	return fetched
 }
 
