@@ -65,11 +65,11 @@ func (a *Activity) header(width int) string {
 
 	switch a.kind {
 	case "Announce":
-		output += style.Color("retweeted")
+		output += "retweeted"
 	case "Like":
-		output += style.Color("upvoted")
+		output += "upvoted"
 	case "Dislike":
-		output += style.Color("downvoted")
+		output += "downvoted"
 	default:
 		panic("encountered unrecognized Actor type: " + a.kind)
 	}
