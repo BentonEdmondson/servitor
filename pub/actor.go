@@ -117,10 +117,12 @@ func (a *Actor) Name() string {
 func (a *Actor) header(width int) string {
 	output := a.Name()
 
-	if a.joinedErr != nil && !errors.Is(a.joinedErr, object.ErrKeyNotPresent) {
+	if errors.Is(a.joinedErr, object.ErrKeyNotPresent) {
+		// omit it
+	} else if a.joinedErr != nil {
 		output += "\njoined " + style.Problem(a.joinedErr)
 	} else {
-		output += "\njoined " + style.Color(a.joined.Format(timeFormat))
+		output += "\njoined " + style.Color(a.joined.Format("2 Jan 2006"))
 	}
 
 	return ansi.Wrap(output, width)
@@ -148,11 +150,31 @@ func (a *Actor) center(width int) (string, bool) {
 	return rendered, true
 }
 
+func (a *Actor) footer(width int) (string, bool) {
+	if errors.Is(a.postsErr, object.ErrKeyNotPresent) {
+		return style.Problem(a.postsErr), true
+	} else if a.postsErr != nil {
+		return "", false
+	} else if quantity, err := a.posts.Size(); errors.Is(err, object.ErrKeyNotPresent) {
+		return "", false
+	} else if err != nil {
+		return style.Problem(err), true
+	} else if quantity == 1 {
+		return style.Color(fmt.Sprintf("%d post", quantity)), true
+	} else {
+		return style.Color(fmt.Sprintf("%d posts", quantity)), true
+	}
+}
+
 func (a *Actor) String(width int) string {
 	output := a.header(width)
 
 	if body, present := a.center(width - 4); present {
-		output += "\n\n" + ansi.Indent(body, "  ", true)
+		output += "\n\n" + ansi.Indent(body, "  ", true) + "\n"
+	}
+
+	if footer, present := a.footer(width); present {
+		output += "\n" + footer
 	}
 
 	return output
@@ -164,6 +186,10 @@ func (a Actor) Preview(width int) string {
 	// TODO this needs to be truncated
 	if body, present := a.center(width); present {
 		output += "\n" + ansi.Snip(body, width, 4, style.Color("\u2026"))
+	}
+
+	if footer, present := a.footer(width); present {
+		output += "\n" + footer
 	}
 
 	return output
