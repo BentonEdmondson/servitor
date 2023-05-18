@@ -57,10 +57,10 @@ func (s *State) Update(input byte) {
 	/* Interesting problem, but you will succeed! */
 	switch input {
 	case 'k': // up
-		mayNeedLoading := s.index - 1 - s.context
+		mayNeedLoading := s.index - s.context - 1
 		if !s.feed.Contains(mayNeedLoading) {
-			if s.feed.Contains(mayNeedLoading - 1) {
-				s.feed.Prepend(s.feed.Get(mayNeedLoading - 1).Parents(1))
+			if s.feed.Contains(mayNeedLoading + 1) {
+				s.feed.Prepend(s.feed.Get(mayNeedLoading + 1).Parents(1))
 			}
 		}
 
