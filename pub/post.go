@@ -204,12 +204,7 @@ func (p *Post) supplement(width int) (string, bool) {
 	output := ""
 	for _, attachment := range p.attachments {
 		if output != "" { output += "\n" }
-		link, err := NewLink(attachment)
-		if err != nil {
-			output += style.Problem(err)
-			continue
-		}
-		alt, err := link.Alt()
+		alt, err := attachment.Alt()
 		if err != nil {
 			output += style.Problem(err)
 			continue

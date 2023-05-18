@@ -26,11 +26,11 @@ type Link struct {
 func NewLink(input any) (*Link, error) {
 	l := &Link{}
 
-	// TODO: narrow input to o (an object.Object)
-	o, ok := input.(object.Object)
+	asMap, ok := input.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("can't turn non-object %T into Link", input)
 	}
+	o := object.Object(asMap)
 
 	var err error
 	if l.kind, err = o.GetString("type"); err != nil {
