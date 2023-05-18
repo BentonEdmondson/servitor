@@ -138,7 +138,11 @@ func (p *Post) header(width int) string {
 		output += style.Problem(fmt.Errorf("failed to get title: %w", p.titleErr)) + "\n"
 	}
 
-	output += style.Color(strings.ToLower(p.kind))
+	if errors.Is(p.parentErr, object.ErrKeyNotPresent) {
+		output += style.Color(strings.ToLower(p.kind))
+	} else {
+		output += style.Color("comment")
+	}
 
 	if len(p.creators) > 0 {
 		output += " by "
@@ -257,6 +261,5 @@ func (p *Post) Preview(width int) string {
 		}
 	}
 
-	output += "\n" + p.footer(width)
 	return output
 }
