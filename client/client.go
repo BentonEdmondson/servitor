@@ -71,57 +71,81 @@ func FetchURL(link *url.URL) (object.Object, error) {
 	converts a webfinger identifier to a url
 	see: https://datatracker.ietf.org/doc/html/rfc7033
 */
-func ResolveWebfinger(username string) (*url.URL, error) {
-	username = strings.TrimPrefix(username, "@")
-	split := strings.Split(username, "@")
+func ResolveWebfinger(username string) (string, error) {
+	if len(username) == 0 || username[0] != '@' {
+		panic("webfinger usernames must begin with @")
+	}
+
+	username = username[1:]
+	split := strings.SplitN(username, "@", 2)
 	var account, domain string
 	if len(split) != 2 {
-		return nil, errors.New("webfinger address must have a separating @ symbol")
+		return "", errors.New("webfinger address must have a separating @ symbol")
 	}
 	account = split[0]
 	domain = split[1]
-
-	query := url.Values{}
-	query.Add("resource", "acct:" + account + "@" + domain)
-	query.Add("rel", "self")
 
 	link := &url.URL{
 		Scheme: "https",
 		Host: domain,
 		Path: "/.well-known/webfinger",
-		RawQuery: query.Encode(),
+		RawQuery: (url.Values {
+			"resource": []string{"acct:" + account + "@" + domain},
+		}).Encode(),
 	}
 
-	json, err := jtp.Get(link, "application/jrd+json", []string{"application/jrd+json"}, MAX_REDIRECTS)
+	json, err := jtp.Get(link, "application/jrd+json", []string{
+		"application/jrd+json",
+		"application/json",
+	}, MAX_REDIRECTS)
+	if err != nil {
+		return "", err
+	}
+
 	response := object.Object(json)
 
 	jrdLinks, err := response.GetList("links")
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	var underlyingLink *url.URL = nil
+	found := false
+	var underlyingLink string
 
 	for _, el := range jrdLinks {
-		jrdLink, ok := el.(object.Object)
+		asMap, ok := el.(map[string]any)
+		o := object.Object(asMap)
 		if ok {
-			rel, err := jrdLink.GetString("rel")
-			if err != nil { continue }
-			if rel != "self" { continue }
-			mediaType, err := jrdLink.GetMediaType("type")
-			if err != nil { continue }
+			rel, err := o.GetString("rel")
+			if err != nil {
+				return "", err
+			}
+			if rel != "self" {
+				continue
+			}
+			mediaType, err := o.GetMediaType("type")
+			if errors.Is(err, object.ErrKeyNotPresent) {
+				continue
+			} else if err != nil {
+				return "", err
+			}
 			if !mediaType.Matches([]string{"application/activity+json"}) {
 				continue
 			}
-			href, err := jrdLink.GetURL("href")
-			if err != nil { continue }
+			href, err := o.GetString("href")
+			if err != nil {
+				return "", err
+			}
+			found = true
 			underlyingLink = href
 			break
+		} else {
+			return "", fmt.Errorf("unrecognized type %T found in webfinger response", el)
 		}
 	}
 
-	if underlyingLink == nil {
-		return nil, errors.New("no matching href was found in the links array of " + link.String())
+	if !found {
+		return "", errors.New("no matching href was found in the links array of " + link.String())
 	}
 
 	return underlyingLink, nil
