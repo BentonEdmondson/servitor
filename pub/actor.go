@@ -56,6 +56,9 @@ func NewActorFromObject(o object.Object, id *url.URL) (*Actor, error) {
 	a.name, a.nameErr = o.GetNatural("name", "en")
 	a.handle, a.handleErr = o.GetString("preferredUsername")
 	a.bio, a.bioErr = o.GetNatural("summary", "en")
+	if a.bio == "" {
+		a.bioErr = object.ErrKeyNotPresent
+	}
 	a.mediaType, a.mediaTypeErr = o.GetMediaType("mediaType")
 	a.joined, a.joinedErr = o.GetTime("published")
 
