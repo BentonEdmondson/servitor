@@ -45,8 +45,8 @@ func (s *State) View(width int, height uint) string {
 			if top != "" { top += "\n" }
 			top += ansi.Indent(serialized + "\n│", "  ", true)
 		} else {
-			if bottom != "" { bottom = "\n" + bottom }
-			bottom = ansi.Indent("│\n" + serialized, "  ", true) + bottom
+			if bottom != "" { bottom += "\n" }
+			bottom += ansi.Indent("│\n" + serialized, "  ", true)
 		}
 	}
 	log.Printf("%s\n", center)
@@ -108,7 +108,7 @@ func Start(input string) *State {
 	s := &State{
 		feed: &feed.Feed{},
 		index: 0,
-		context: 1,
+		context: 3,
 	}
 	s.SwitchTo(item)
 	return s
