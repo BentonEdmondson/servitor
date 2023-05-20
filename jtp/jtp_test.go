@@ -4,9 +4,6 @@ import (
 	"testing"
 	"mimicry/util"
 	"net/url"
-	"encoding/json"
-	"os"
-	"sync"
 )
 
 func TestStatusLineNoInfo(t *testing.T) {
@@ -20,43 +17,42 @@ func TestStatusLineNoInfo(t *testing.T) {
 
 // TODO: put this behind an --online flag or figure out
 // how to nicely do offline tests
+func TestRedirect(t *testing.T) {
+	accept := "application/activity+json"
+	tolerated := []string{"application/json"}
+
+	link, err := url.Parse("https://httpbin.org/redirect/5")
+	if err != nil {
+		t.Fatalf("invalid url literal: %s", err)
+	}
+
+	_, actualLink, err := Get(link, accept, tolerated, 5)
+
+	if err != nil {
+		t.Fatalf("failed to preform request: %s", err)
+	}
+
+	if link.String() == actualLink.String() {
+		t.Fatalf("failed to return the underlying url redirected to by %s", link.String())
+	}
+}
+
 func TestBasic(t *testing.T) {
 	accept := "application/activity+json"
 	tolerated := []string{"application/json"}
 
-	link, err := url.Parse("https://httpbin.org/redirect/20")
+	link, err := url.Parse("https://httpbin.org/get")
 	if err != nil {
-		panic(err)
+		t.Fatalf("invalid url literal: %s", err)
 	}
 
-	var dict1, dict2 map[string]any
-	var err1, err2 error
-	var wg sync.WaitGroup; wg.Add(2); {
-		go func() {
-			dict1, err1 = Get(link, accept, tolerated, 20)
-			wg.Done()
-		}()
-		go func() {
-			dict2, err2 = Get(link, accept, tolerated, 20)
-			wg.Done()
-		}()
-	}; wg.Wait()
+	_, actualLink, err := Get(link, accept, tolerated, 20)
 
-	if err1 != nil {
-		panic(err1)
-	}
-
-	if err2 != nil {
-		panic(err2)
-	}
-
-	err = json.NewEncoder(os.Stdout).Encode(dict1)
 	if err != nil {
-		panic(err)
+		t.Fatalf("failed to preform request: %s", err)
 	}
 
-	err = json.NewEncoder(os.Stdout).Encode(dict2)
-	if err != nil {
-		panic(err)
+	if link.String() != actualLink.String() {
+		t.Fatalf("underlying url %s should match request url %s", actualLink.String(), link.String())
 	}
 }

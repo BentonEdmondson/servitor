@@ -21,7 +21,7 @@ func FetchUnknown(input any, source *url.URL) (object.Object, *url.URL, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		obj, err = FetchURL(url)
+		obj, source, err = FetchURL(url)
 		if err != nil { return nil, nil, err }
 	case map[string]any:
 		obj = object.Object(narrowed)
@@ -39,10 +39,10 @@ func FetchUnknown(input any, source *url.URL) (object.Object, *url.URL, error) {
 
 	if id != nil {
 		if source == nil {
-			obj, err = FetchURL(id)
+			obj, source, err = FetchURL(id)
 			if err != nil { return nil, nil, err }
 		} else if (source.Host != id.Host) || len(obj) <= 2 {
-			obj, err = FetchURL(id)
+			obj, source, err = FetchURL(id)
 			if err != nil { return nil, nil, err }
 		}
 	}
@@ -53,7 +53,7 @@ func FetchUnknown(input any, source *url.URL) (object.Object, *url.URL, error) {
 	return obj, id, err
 }
 
-func FetchURL(link *url.URL) (object.Object, error) {
+func FetchURL(link *url.URL) (object.Object, *url.URL, error) {
 	return jtp.Get(
 			link,
 			`application/activity+json,` +
@@ -94,14 +94,13 @@ func ResolveWebfinger(username string) (string, error) {
 		}).Encode(),
 	}
 
-	json, err := jtp.Get(link, "application/jrd+json", []string{
+	json, _, err := jtp.Get(link, "application/jrd+json", []string{
 		"application/jrd+json",
 		"application/json",
 	}, MAX_REDIRECTS)
 	if err != nil {
 		return "", err
 	}
-
 	response := object.Object(json)
 
 	jrdLinks, err := response.GetList("links")

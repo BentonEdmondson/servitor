@@ -33,9 +33,9 @@ var locationRegexp = regexp.MustCompile(`^(?i:location):[ \t\r]*(.*?)[ \t\r]*\n$
 	maxRedirects
 		the maximum number of redirects to take
 */
-func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (map[string]any, error) {
+func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (map[string]any, *url.URL, error) {
 	if link.Scheme != "https" {
-		return nil, errors.New(link.Scheme + " is not supported in requests, only https")
+		return nil, nil, errors.New(link.Scheme + " is not supported in requests, only https")
 	}
 
 	port := link.Port()
@@ -48,7 +48,7 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 
 	connection, err := dialer.Dial("tcp", hostport)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	_, err = connection.Write([]byte(
@@ -58,13 +58,13 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 		"\r\n",
 	))
 	if err != nil {
-		return nil, errors.Join(err, connection.Close())
+		return nil, nil, errors.Join(err, connection.Close())
 	}
 
 	buf := bufio.NewReader(connection)
 	statusLine, err := buf.ReadString('\n')
 	if err != nil {
-		return nil, errors.Join(
+		return nil, nil, errors.Join(
 			fmt.Errorf("failed to parse HTTP status line: %w", err),
 			connection.Close(),
 		)
@@ -72,30 +72,30 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 
 	status, err := parseStatusLine(statusLine)
 	if err != nil {
-		return nil, errors.Join(err, connection.Close())
+		return nil, nil, errors.Join(err, connection.Close())
 	}
 
 	if strings.HasPrefix(status, "3") {
 		location, err := findLocation(buf, link)
 		if err != nil {
-			return nil, errors.Join(err, connection.Close())
+			return nil, nil, errors.Join(err, connection.Close())
 		}
 
 		if maxRedirects == 0 {
-			return nil, errors.Join(
+			return nil, nil, errors.Join(
 				errors.New("Received " + status + " but max redirects has already been reached"),
 				connection.Close(),
 			)
 		}
 
 		if err := connection.Close(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		return Get(location, accept, tolerated, maxRedirects - 1)
 	}
 
 	if status != "200" && status != "201" && status != "202" && status != "203" {
-		return nil, errors.Join(
+		return nil, nil, errors.Join(
 			errors.New("received invalid status " + status),
 			connection.Close(),
 		)
@@ -103,23 +103,23 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 
 	err = validateHeaders(buf, tolerated)
 	if err != nil {
-		return nil, errors.Join(err, connection.Close())
+		return nil, nil, errors.Join(err, connection.Close())
 	}
 
 	var dictionary map[string]any
 	err = json.NewDecoder(buf).Decode(&dictionary)
 	if err != nil {
-		return nil, errors.Join(
+		return nil, nil, errors.Join(
 			fmt.Errorf("failed to parse JSON: %w", err),
 			connection.Close(),
 		)
 	}
 
 	if err := connection.Close(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return dictionary, nil
+	return dictionary, link, nil
 }
 
 func parseStatusLine(text string) (string, error) {
