@@ -62,9 +62,9 @@ func NewActorFromObject(o object.Object, id *url.URL) (*Actor, error) {
 	a.mediaType, a.mediaTypeErr = o.GetMediaType("mediaType")
 	a.joined, a.joinedErr = o.GetTime("published")
 
-	// TODO: parallelize
 	a.pfp, a.pfpErr = getBestLink(o, "icon", "image")
 	a.banner, a.bannerErr = getBestLink(o, "image", "image")
+	
 	a.posts, a.postsErr = getCollection(o, "outbox", a.id)
 	return a, nil
 }

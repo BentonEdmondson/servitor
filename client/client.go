@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"mimicry/object"
 	"fmt"
+	"golang.org/x/sync/singleflight"
 )
 
 const MAX_REDIRECTS = 20
@@ -53,18 +54,42 @@ func FetchUnknown(input any, source *url.URL) (object.Object, *url.URL, error) {
 	return obj, id, err
 }
 
-func FetchURL(link *url.URL) (object.Object, *url.URL, error) {
-	return jtp.Get(
-			link,
-			`application/activity+json,` +
-			`application/ld+json; profile="https://www.w3.org/ns/activitystreams"`,
-			[]string{
-				"application/activity+json",
-				"application/ld+json",
-				"application/json",
-			},
-			MAX_REDIRECTS,
-		)
+var group singleflight.Group
+type bundle struct {
+	item map[string]any
+	source *url.URL
+	err error
+}
+
+/* A map of mutexes is used to ensure no two requests are made simultaneously.
+   Instead, the subsequent ones will wait for the first one to finish (and will
+   then naturally find its result in the cache) */
+
+func FetchURL(uri *url.URL) (object.Object, *url.URL, error) {
+	uriString := uri.String()
+	b, _, _ := group.Do(uriString, func() (any, error) {
+		json, source, err := 
+			jtp.Get(
+				uri,
+				`application/activity+json,` +
+				`application/ld+json; profile="https://www.w3.org/ns/activitystreams"`,
+				[]string{
+					"application/activity+json",
+					"application/ld+json",
+					"application/json",
+				},
+				MAX_REDIRECTS,
+			)
+		return bundle {
+			item: json,
+			source: source,
+			err: err,
+		}, nil
+	})
+	/* By this point the result has been cached in the LRU cache,
+	   so it can be dropped from the singleflight cache */
+	group.Forget(uriString)
+	return b.(bundle).item, b.(bundle).source, b.(bundle).err
 }
 
 /*
@@ -128,7 +153,10 @@ func ResolveWebfinger(username string) (string, error) {
 			} else if err != nil {
 				return "", err
 			}
-			if !mediaType.Matches([]string{"application/activity+json"}) {
+			if !mediaType.Matches([]string{
+				"application/activity+json",
+				"application/ld+json",
+			}) {
 				continue
 			}
 			href, err := o.GetString("href")

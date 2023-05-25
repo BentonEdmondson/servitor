@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 	"mimicry/mime"
 	"mimicry/render"
+	"sync"
 )
 
 type Post struct {
@@ -79,20 +80,19 @@ func NewPostFromObject(o object.Object, id *url.URL) (*Post, error) {
 		p.link, p.linkErr = getFirstLinkShorthand(o, "url")
 	}
 
-	// TODO: perhaps the actor fraud check should occur right here--if
-	// all fail, the entire constructor fails? Probably not, what if
-	// one fails because of the protocol, another fails because of fraud
-	// check, I probably want to show the whole thing
-	p.creators = getActors(o, "attributedTo", p.id)
-	p.recipients = getActors(o, "audience", p.id)
-	p.attachments, p.attachmentsErr = getLinks(o, "attachment")
-
-	// TODO: in the future, I may want to pass an assertion to the collection
-	// asserting that the posts therein do reply to this post
-	p.comments, p.commentsErr = getCollection(o, "replies", p.id)
-	if errors.Is(p.commentsErr, object.ErrKeyNotPresent) {
-		p.comments, p.commentsErr = getCollection(o, "comments", p.id)
-	}
+	var wg sync.WaitGroup
+	wg.Add(4)
+	go func() {p.creators = getActors(o, "attributedTo", p.id); wg.Done()}()
+	go func() {p.recipients = getActors(o, "audience", p.id); wg.Done()}()
+	go func() {p.attachments, p.attachmentsErr = getLinks(o, "attachment"); wg.Done()}()
+	go func() {
+		p.comments, p.commentsErr = getCollection(o, "replies", p.id)
+		if errors.Is(p.commentsErr, object.ErrKeyNotPresent) {
+			p.comments, p.commentsErr = getCollection(o, "comments", p.id)
+		}
+		wg.Done()
+	}()
+	wg.Wait()
 	return p, nil
 }
 

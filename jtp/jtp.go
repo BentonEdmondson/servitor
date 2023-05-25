@@ -10,11 +10,19 @@ import (
 	"fmt"
 	"strings"
 	"encoding/json"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 var dialer = &tls.Dialer{
 	NetDialer: &net.Dialer{},
 }
+
+type bundle struct {
+	item map[string]any
+	source *url.URL
+	err error
+}
+var cache, _ = lru.New[string, bundle](128)
 
 var mediaTypeRegexp = regexp.MustCompile(`(?s)^(([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)/([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)).*$`)
 var statusLineRegexp = regexp.MustCompile(`^HTTP/1\.[0-9] ([0-9]{3}).*\n$`)
@@ -34,6 +42,10 @@ var locationRegexp = regexp.MustCompile(`^(?i:location):[ \t\r]*(.*?)[ \t\r]*\n$
 		the maximum number of redirects to take
 */
 func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (map[string]any, *url.URL, error) {
+	if cached, ok := cache.Get(link.String()); ok {
+		return cached.item, cached.source, cached.err
+	}
+
 	if link.Scheme != "https" {
 		return nil, nil, errors.New(link.Scheme + " is not supported in requests, only https")
 	}
@@ -91,7 +103,10 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 		if err := connection.Close(); err != nil {
 			return nil, nil, err
 		}
-		return Get(location, accept, tolerated, maxRedirects - 1)
+		var b bundle
+		b.item, b.source, b.err = Get(location, accept, tolerated, maxRedirects - 1)
+		cache.Add(link.String(), b)
+		return b.item, b.source, b.err
 	}
 
 	if status != "200" && status != "201" && status != "202" && status != "203" {
@@ -119,6 +134,11 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 		return nil, nil, err
 	}
 
+	cache.Add(link.String(), bundle {
+		item: dictionary,
+		source: link,
+		err: nil,
+	})
 	return dictionary, link, nil
 }
 

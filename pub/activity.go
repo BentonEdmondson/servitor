@@ -8,6 +8,7 @@ import (
 	"golang.org/x/exp/slices"
 	"mimicry/ansi"
 	"mimicry/style"
+	"sync"
 )
 
 type Activity struct {
@@ -38,9 +39,11 @@ func NewActivityFromObject(o object.Object, id *url.URL) (*Activity, error) {
 		return nil, fmt.Errorf("%w: %s is not an Activity", ErrWrongType, a.kind)
 	}
 
-	// TODO: parallelize
-	a.actor, a.actorErr = getActor(o, "actor", a.id)
-	a.target = getPostOrActor(o, "object", a.id)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func () {a.actor, a.actorErr = getActor(o, "actor", a.id); wg.Done()}()
+	go func() {a.target = getPostOrActor(o, "object", a.id); wg.Done()}()
+	wg.Wait()
 
 	return a, nil
 }

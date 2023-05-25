@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/url"
 	"mimicry/client"
+	"sync"
 )
 
 var (
@@ -15,26 +16,6 @@ var (
 const (
 	timeFormat = "3:04 pm on 2 Jan 2006"
 )
-
-/*
-	This implements functions common to the different types.
-	- getActors
-	- getCollection
-	- getActor
-	- getPostOrActor
-	- NewTangible
-
-	// these will return an error on any problem
-	- getBestLink, link impl will need the link, Rating(), mediatype, and be willing to take in Posts or Links
-	- getFirstLinkShorthand
-	- getBestLinkShorthand
-
-	// used exclusively for attachments, honestly I
-	// think it should probably return markup.
-	// probably should actually be a function within 
-	// Post
-	- getLinks
-*/
 
 type TangibleWithName interface {
 	Tangible
@@ -48,26 +29,22 @@ func getActors(o object.Object, key string, source *url.URL) []TangibleWithName 
 		return []TangibleWithName{NewFailure(err)}
 	}
 
-	// TODO: parallelize will probably require making fixed size
-	// full width, swapping publics for nils, then later filtering
-	// out the nils to reach a dynamic width
-	output := []TangibleWithName{}
-	for _, element := range list {
-		if narrowed, ok := element.(string); ok {
-			if narrowed == "https://www.w3.org/ns/activitystreams#Public" ||
-			narrowed == "as:Public" ||
-			narrowed == "Public" {
-			continue
-		}
-		}
-
-		fetched, err := NewActor(element, source)
-		if err != nil {
-			output = append(output, NewFailure(err))
-		} else {
-			output = append(output, fetched)
-		}
+	output := make([]TangibleWithName, len(list))
+	var wg sync.WaitGroup
+	for i := range list {
+		wg.Add(1)
+		i := i
+		go func() {
+			fetched, err := NewActor(list[i], source)
+			if err != nil {
+				output[i] = NewFailure(err)
+			} else {
+				output[i] = fetched
+			}
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 	return output
 }
 

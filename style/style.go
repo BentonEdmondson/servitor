@@ -62,8 +62,7 @@ func QuoteBlock(text string) string {
 }
 
 func LinkBlock(text string) string {
-	indented := ansi.Indent(text, "  ", false)
-	return "‣ " + Link(indented)
+	return "‣ " + ansi.Indent(Link(text), "  ", false)
 }
 
 func Header(text string, level uint) string {

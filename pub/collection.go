@@ -7,7 +7,7 @@ import (
 	"mimicry/client"
 	"fmt"
 	"golang.org/x/exp/slices"
-	"log"
+	"sync"
 )
 
 /*
@@ -78,10 +78,6 @@ func (c *Collection) Size() (uint64, error) {
 }
 
 func (c *Collection) Harvest(amount uint, startingPoint uint) ([]Tangible, Container, uint) {
-	// To work through this problem you need to go through this step by step and
-	// make sure the logic is good. Then you should probably start writing some tests
-	
-	log.Printf("amount: %d starting: %d", amount, startingPoint)
 	if c.elementsErr != nil && !errors.Is(c.elementsErr, object.ErrKeyNotPresent) {
 		return []Tangible{NewFailure(c.elementsErr)}, nil, 0
 	}
@@ -92,7 +88,6 @@ func (c *Collection) Harvest(amount uint, startingPoint uint) ([]Tangible, Conta
 	} else {
 		length = uint(len(c.elements))
 	}
-	log.Printf("length: %d", length)
 
 	// TODO: change to bool nextWillBeFetched in which case amount from this page is all
 	// and later on the variable is clear
@@ -106,29 +101,37 @@ func (c *Collection) Harvest(amount uint, startingPoint uint) ([]Tangible, Conta
 		amountFromThisPage = length - startingPoint
 	}
 
-	log.Printf("amount from this page: %d", amountFromThisPage)
 	fromThisPage := make([]Tangible, amountFromThisPage)
 	var fromLaterPages []Tangible
 	var nextCollection Container
 	var nextStartingPoint uint
 
-	// TODO: parallelize this
-
+	var wg sync.WaitGroup
 	for i := uint(0); i < amountFromThisPage; i++ {
-		fromThisPage[i] = NewTangible(c.elements[i+startingPoint], c.id)
+		i := i
+		wg.Add(1)
+		go func() {
+			fromThisPage[i] = NewTangible(c.elements[i+startingPoint], c.id)
+			wg.Done()
+		}()
 	}
 
-	if errors.Is(c.nextErr, object.ErrKeyNotPresent) || length > amount + startingPoint {
-		fromLaterPages, nextCollection, nextStartingPoint = []Tangible{}, c, amount + startingPoint
-	} else {
-		if c.nextErr != nil {
-			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{NewFailure(c.nextErr)}, c, amount + startingPoint
-		} else if next, err := NewCollection(c.next, c.id); err != nil {
-			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{NewFailure(err)}, c, amount + startingPoint
+	wg.Add(1)
+	go func() {
+		if errors.Is(c.nextErr, object.ErrKeyNotPresent) || length > amount + startingPoint {
+			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{}, c, amount + startingPoint
 		} else {
-			fromLaterPages, nextCollection, nextStartingPoint = next.Harvest(amount - amountFromThisPage, 0)
+			if c.nextErr != nil {
+				fromLaterPages, nextCollection, nextStartingPoint = []Tangible{NewFailure(c.nextErr)}, c, amount + startingPoint
+			} else if next, err := NewCollection(c.next, c.id); err != nil {
+				fromLaterPages, nextCollection, nextStartingPoint = []Tangible{NewFailure(err)}, c, amount + startingPoint
+			} else {
+				fromLaterPages, nextCollection, nextStartingPoint = next.Harvest(amount - amountFromThisPage, 0)
+			}
 		}
-	}
+		wg.Done()
+	}()
+	wg.Wait()
 
 	return append(fromThisPage, fromLaterPages...), nextCollection, nextStartingPoint
 }

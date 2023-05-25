@@ -6,7 +6,6 @@ import (
 	"golang.org/x/term"
 	"strings"
 	"mimicry/ui"
-	"log"
 )
 
 // TODO: clean up most panics
@@ -21,7 +20,6 @@ func main() {
 	width, heightInt, err := term.GetSize(int(os.Stdin.Fd()))
 	if err != nil { panic(err) }
 	height := uint(heightInt)
-	log.Printf("h, w: %v, %v", height, width)
 	printRaw("")
 
 	state := ui.Start(os.Args[1])
@@ -44,6 +42,6 @@ func main() {
 
 func printRaw(output string) {
 	output = strings.ReplaceAll(output, "\n", "\r\n")
-	_, err := fmt.Print("\x1b[2J\x1b[0;0H" + output)
+	_, err := fmt.Print("\x1b[0;0H\x1b[2J" + output)
 	if err != nil { panic(err) }
 }

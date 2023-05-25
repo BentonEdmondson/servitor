@@ -5,7 +5,7 @@ import (
 	"mimicry/ansi"
 	"mimicry/feed"
 	"fmt"
-	"log"
+	"sync"
 )
 
 type State struct {
@@ -33,7 +33,6 @@ func (s *State) View(width int, height uint) string {
 		var serialized string
 		if i == 0 {
 			serialized = s.feed.Get(i).String(width - 4)
-			log.Printf("%d\n", len(serialized))
 		} else if i > 0 {
 			serialized = "╰ " + ansi.Indent(s.feed.Get(i).Preview(width - 4), "  ", false)
 		} else {
@@ -49,7 +48,6 @@ func (s *State) View(width int, height uint) string {
 			bottom += ansi.Indent("│\n" + serialized, "  ", true)
 		}
 	}
-	log.Printf("%s\n", center)
 	return ansi.CenterVertically(top, center, bottom, height)
 }
 
@@ -66,6 +64,9 @@ func (s *State) Update(input byte) {
 
 		if s.feed.Contains(s.index - 1) {
 			s.index -= 1
+
+			/* Preload more into the HTTP cache */
+			s.PreloadUp(s.context)
 		}
 	case 'j': // down
 		mayNeedLoading := s.index + 1 + s.context
@@ -79,6 +80,9 @@ func (s *State) Update(input byte) {
 
 		if s.feed.Contains(s.index + 1) {
 			s.index += 1
+
+			/* Preload more into the HTTP cache */
+			s.PreloadDown(s.context)
 		}
 	}
 	// TODO: the catchall down here will be to look at s.feed.Get(s.index).References()
@@ -89,26 +93,44 @@ func (s *State) SwitchTo(item pub.Any)  {
 	switch narrowed := item.(type) {
 	case pub.Tangible:
 		s.feed = feed.Create(narrowed)
-		s.feed.Prepend(narrowed.Parents(uint(s.context)))
-		var children []pub.Tangible
-		children, s.page, s.basepoint = narrowed.Children(uint(s.context))
+		var parents, children []pub.Tangible
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {parents = narrowed.Parents(uint(s.context)); wg.Done()}()
+		go func() {children, s.page, s.basepoint = narrowed.Children(uint(s.context)); wg.Done()}()
+		wg.Wait()
+		s.feed.Prepend(parents)
 		s.feed.Append(children)
+		s.PreloadUp(s.context)
+		s.PreloadDown(s.context)
 	case pub.Container:
 		var children []pub.Tangible
 		children, s.page, s.basepoint = narrowed.Harvest(uint(s.context), 0)
 		s.feed = feed.CreateAndAppend(children)
+		s.PreloadDown(s.context)
 	default:
 		panic(fmt.Sprintf("unrecognized non-Tangible non-Container: %T", item))
 	}
 }
 
+func (s *State) PreloadDown(amount int) {
+	if s.page != nil {
+		go s.page.Harvest(uint(amount), s.basepoint)
+	}
+} 
+
+func (s *State) PreloadUp(amount int) {
+	if s.feed.Contains(s.index - s.context) {
+		go s.feed.Get(s.index - s.context).Parents(uint(amount))
+	}
+}
+
 func Start(input string) *State {
 	item := pub.FetchUserInput(input)
-	log.Printf("%v\n", item)
 	s := &State{
 		feed: &feed.Feed{},
 		index: 0,
-		context: 3,
+		context: 5,
 	}
 	s.SwitchTo(item)
 	return s
