@@ -10,11 +10,12 @@ import (
 	"fmt"
 	"strings"
 	"encoding/json"
+	"time"
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
-var dialer = &tls.Dialer{
-	NetDialer: &net.Dialer{},
+var dialer = &net.Dialer{
+	Timeout: 5 * time.Second,
 }
 
 type bundle struct {
@@ -58,7 +59,7 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 	// TODO: link.Host may work instead of needing net.JoinHostPort
 	hostport := net.JoinHostPort(link.Hostname(), port)
 
-	connection, err := dialer.Dial("tcp", hostport)
+	connection, err := tls.DialWithDialer(dialer, "tcp", hostport, /*config =*/nil)
 	if err != nil {
 		return nil, nil, err
 	}
