@@ -73,20 +73,19 @@ func (a *Actor) Kind() string {
 	return a.kind
 }
 
-func (a *Actor) Parents(quantity uint) []Tangible {
-	return []Tangible{}
+func (a *Actor) Parents(quantity uint) ([]Tangible, Tangible) {
+	return []Tangible{}, nil
 }
 
-func (a *Actor) Children(quantity uint) ([]Tangible, Container, uint) {
-	if errors.Is(a.postsErr, object.ErrKeyNotPresent) {
-		return []Tangible{}, nil, 0
+func (a *Actor) Children() Container {
+	/* the if is necessary because my understanding is
+	   the first nil is a (*Collection)(nil) whereas
+	   the second is (Container)(nil) */
+	if a.posts == nil {
+		return nil
+	} else {
+		return a.posts
 	}
-	if a.postsErr != nil {
-		return []Tangible{
-			NewFailure(a.postsErr),
-		}, nil, 0
-	}
-	return a.posts.Harvest(quantity, 0)
 }
 
 // TODO: here is where I'd put forgery errors in

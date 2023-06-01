@@ -96,10 +96,10 @@ func (a *Activity) Preview(width int) string {
 	return output
 }
 
-func (a *Activity) Children(quantity uint) ([]Tangible, Container, uint) {
-	return a.target.Children(quantity)
+func (a *Activity) Children() Container {
+	return a.target.Children()
 }
 
-func (a *Activity) Parents(quantity uint) []Tangible {
+func (a *Activity) Parents(quantity uint) ([]Tangible, Tangible) {
 	return a.target.Parents(quantity)
 }

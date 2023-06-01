@@ -78,6 +78,10 @@ func (c *Collection) Size() (uint64, error) {
 }
 
 func (c *Collection) Harvest(amount uint, startingPoint uint) ([]Tangible, Container, uint) {
+	if c == nil {
+		panic("can't harvest nil collection")
+	}
+
 	if c.elementsErr != nil && !errors.Is(c.elementsErr, object.ErrKeyNotPresent) {
 		return []Tangible{NewFailure(c.elementsErr)}, nil, 0
 	}
@@ -118,19 +122,21 @@ func (c *Collection) Harvest(amount uint, startingPoint uint) ([]Tangible, Conta
 
 	wg.Add(1)
 	go func() {
-		if errors.Is(c.nextErr, object.ErrKeyNotPresent) || length > amount + startingPoint {
+		if length > amount + startingPoint {
 			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{}, c, amount + startingPoint
+		} else if errors.Is(c.nextErr, object.ErrKeyNotPresent) {
+			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{}, nil, 0
+		} else if c.nextErr != nil {
+			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{NewFailure(c.nextErr)}, nil, 0
+		} else if next, err := NewCollection(c.next, c.id); err != nil {
+			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{NewFailure(err)}, nil, 0
 		} else {
-			if c.nextErr != nil {
-				fromLaterPages, nextCollection, nextStartingPoint = []Tangible{NewFailure(c.nextErr)}, c, amount + startingPoint
-			} else if next, err := NewCollection(c.next, c.id); err != nil {
-				fromLaterPages, nextCollection, nextStartingPoint = []Tangible{NewFailure(err)}, c, amount + startingPoint
-			} else {
-				fromLaterPages, nextCollection, nextStartingPoint = next.Harvest(amount - amountFromThisPage, 0)
-			}
+			fromLaterPages, nextCollection, nextStartingPoint = next.Harvest(amount - amountFromThisPage, 0)
 		}
+
 		wg.Done()
 	}()
+
 	wg.Wait()
 
 	return append(fromThisPage, fromLaterPages...), nextCollection, nextStartingPoint

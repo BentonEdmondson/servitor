@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"golang.org/x/term"
 	"strings"
 	"mimicry/ui"
+	"time"
 )
 
 // TODO: clean up most panics
@@ -17,13 +17,21 @@ func main() {
 	oldTerminal, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil { panic(err) }
 	defer term.Restore(int(os.Stdin.Fd()), oldTerminal)
-	width, heightInt, err := term.GetSize(int(os.Stdin.Fd()))
+	width, height, err := term.GetSize(int(os.Stdin.Fd()))
 	if err != nil { panic(err) }
-	height := uint(heightInt)
 	printRaw("")
 
-	state := ui.Start(os.Args[1])
-	printRaw(state.View(width, height))
+	state := ui.Start(os.Args[1], printRaw)
+	state.SetWidthHeight(width, height)
+
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			width, height, err := term.GetSize(int(os.Stdin.Fd()))
+			if err != nil { panic(err) }
+			state.SetWidthHeight(width, height)
+		}
+	}()
 
 	buffer := make([]byte, 1)
 	for {
@@ -36,12 +44,11 @@ func main() {
 		}
 
 		state.Update(input)
-		printRaw(state.View(width, height))
 	}
 }
 
 func printRaw(output string) {
 	output = strings.ReplaceAll(output, "\n", "\r\n")
-	_, err := fmt.Print("\x1b[0;0H\x1b[2J" + output)
+	_, err := os.Stdout.WriteString("\x1b[0;0H\x1b[2J" + output)
 	if err != nil { panic(err) }
 }

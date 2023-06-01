@@ -29,10 +29,10 @@ func (f *Failure) String(width int) string {
 	return f.Preview(width)
 }
 
-func (f *Failure) Parents(uint) []Tangible {
-	return []Tangible{}
+func (f *Failure) Parents(uint) ([]Tangible, Tangible) {
+	return []Tangible{}, nil
 }
 
-func (f *Failure) Children(uint) ([]Tangible, Container, uint) {
-	return []Tangible{}, nil, 0
+func (f *Failure) Children() Container {
+	return nil
 }

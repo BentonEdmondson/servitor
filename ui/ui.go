@@ -6,37 +6,42 @@ import (
 	"mimicry/feed"
 	"fmt"
 	"sync"
+	"mimicry/style"
 )
 
 type State struct {
-	/* the 0 index is special; it is rendered in full, not as a preview.
-	   the others are all rendered as previews. negative indexes represent
-	   parents of the 0th element (found via `inReplyTo`) and positive
-	   elements represent children (found via the pertinent collection,
-	   e.g. `replies` for a post or `outbox` for an actor) */
+	m sync.Mutex
+
 	feed *feed.Feed
 	index int
 	context int
 
+	frontier pub.Tangible
+	loadingUp bool
+
 	page pub.Container
 	basepoint uint
+	loadingDown bool
+
+	width int
+	height int
+
+	output func(string)
 }
 
-func (s *State) View(width int, height uint) string {
-	//return s.feed.Get(0).String(width)
+func (s *State) View() string {
 	var top, center, bottom string
-	//TODO: this should be bounded based on size of feed
 	for i := s.index - s.context; i <= s.index + s.context; i++ {
 		if !s.feed.Contains(i) {
 			continue
 		}
 		var serialized string
 		if i == 0 {
-			serialized = s.feed.Get(i).String(width - 4)
+			serialized = s.feed.Get(i).String(s.width - 4)
 		} else if i > 0 {
-			serialized = "╰ " + ansi.Indent(s.feed.Get(i).Preview(width - 4), "  ", false)
+			serialized = "╰ " + ansi.Indent(s.feed.Get(i).Preview(s.width - 4), "  ", false)
 		} else {
-			serialized = s.feed.Get(i).Preview(width - 4)
+			serialized = s.feed.Get(i).Preview(s.width - 4)
 		}
 		if i == s.index {
 			center = ansi.Indent(serialized, "┃ ", true)
@@ -48,90 +53,128 @@ func (s *State) View(width int, height uint) string {
 			bottom += ansi.Indent("│\n" + serialized, "  ", true)
 		}
 	}
-	return ansi.CenterVertically(top, center, bottom, height)
+	if s.loadingUp {
+		if top != "" { top += "\n" }
+		top = "  " + style.Color("Loading…") + "\n" + top
+	}
+	if s.loadingDown {
+		if bottom != "" { bottom += "\n" }
+		bottom += "\n  " + style.Color("Loading…")
+	}
+	return ansi.CenterVertically(top, center, bottom, uint(s.height))
 }
 
 func (s *State) Update(input byte) {
-	/* Interesting problem, but you will succeed! */
 	switch input {
 	case 'k': // up
-		mayNeedLoading := s.index - s.context - 1
-		if !s.feed.Contains(mayNeedLoading) {
-			if s.feed.Contains(mayNeedLoading + 1) {
-				s.feed.Prepend(s.feed.Get(mayNeedLoading + 1).Parents(1))
-			}
-		}
-
+		s.m.Lock()
 		if s.feed.Contains(s.index - 1) {
 			s.index -= 1
-
-			/* Preload more into the HTTP cache */
-			s.PreloadUp(s.context)
 		}
+		s.loadSurroundings()
+		s.output(s.View())
+		s.m.Unlock()
 	case 'j': // down
-		mayNeedLoading := s.index + 1 + s.context
-		if !s.feed.Contains(mayNeedLoading) {
-			if s.page != nil {
-				var children []pub.Tangible
-				children, s.page, s.basepoint = s.page.Harvest(1, s.basepoint)
-				s.feed.Append(children)
-			}
-		}
-
+		s.m.Lock()
 		if s.feed.Contains(s.index + 1) {
 			s.index += 1
-
-			/* Preload more into the HTTP cache */
-			s.PreloadDown(s.context)
 		}
+		s.loadSurroundings()
+		s.output(s.View())
+		s.m.Unlock()
+	case 'g': // return to OP
+		s.m.Lock()
+		s.index = 0
+		s.output(s.View())
+		s.m.Unlock()
+	case ' ': // select
+		s.m.Lock()
+		s.switchTo(s.feed.Get(s.index))
+		s.output(s.View())
+		s.m.Unlock()
 	}
 	// TODO: the catchall down here will be to look at s.feed.Get(s.index).References()
 	// for urls to switch to
 }
 
-func (s *State) SwitchTo(item pub.Any)  {
+func (s *State) switchTo(item pub.Any)  {
 	switch narrowed := item.(type) {
 	case pub.Tangible:
 		s.feed = feed.Create(narrowed)
-		var parents, children []pub.Tangible
-		var wg sync.WaitGroup
-		wg.Add(2)
-		go func() {parents = narrowed.Parents(uint(s.context)); wg.Done()}()
-		go func() {children, s.page, s.basepoint = narrowed.Children(uint(s.context)); wg.Done()}()
-		wg.Wait()
-		s.feed.Prepend(parents)
-		s.feed.Append(children)
-		s.PreloadUp(s.context)
-		s.PreloadDown(s.context)
+		s.frontier = narrowed
+		s.page = narrowed.Children()
+		s.index = 0
+		s.loadingUp = false
+		s.loadingDown = false
+		s.basepoint = 0
+		s.loadSurroundings()
 	case pub.Container:
 		var children []pub.Tangible
 		children, s.page, s.basepoint = narrowed.Harvest(uint(s.context), 0)
 		s.feed = feed.CreateAndAppend(children)
-		s.PreloadDown(s.context)
 	default:
 		panic(fmt.Sprintf("unrecognized non-Tangible non-Container: %T", item))
 	}
 }
 
-func (s *State) PreloadDown(amount int) {
-	if s.page != nil {
-		go s.page.Harvest(uint(amount), s.basepoint)
+func (s *State) SetWidthHeight(width int, height int) {
+	s.m.Lock()
+	defer s.m.Unlock()
+	if s.width == width && s.height == height {
+		return
 	}
-} 
+	s.width = width
+	s.height = height
+	s.output(s.View())
+}
 
-func (s *State) PreloadUp(amount int) {
-	if s.feed.Contains(s.index - s.context) {
-		go s.feed.Get(s.index - s.context).Parents(uint(amount))
+func (s *State) loadSurroundings() {
+	feed := s.feed
+	frontier := s.frontier
+	page := s.page
+	basepoint := s.basepoint
+	context := s.context
+	if !s.loadingUp && !feed.Contains(s.index - context) && frontier != nil {
+		s.loadingUp = true
+		go func() {
+			parents, newFrontier := frontier.Parents(uint(context))
+			s.m.Lock()
+			feed.Prepend(parents)
+			if feed == s.feed {
+				s.frontier = newFrontier
+				s.loadingUp = false
+				s.output(s.View())
+			}
+			s.m.Unlock()
+		}()
+	}
+	if !s.loadingDown && !feed.Contains(s.index + context) && page != nil {
+		s.loadingDown = true
+		go func() {
+			children, newPage, newBasepoint := page.Harvest(uint(context), basepoint)
+			s.m.Lock()
+			feed.Append(children)
+			if feed == s.feed {
+				s.page = newPage
+				s.basepoint = newBasepoint
+				s.loadingDown = false
+				s.output(s.View())
+			}
+			s.m.Unlock()
+		}()
 	}
 }
 
-func Start(input string) *State {
+func Start(input string, output func(string)) *State {
 	item := pub.FetchUserInput(input)
 	s := &State{
 		feed: &feed.Feed{},
 		index: 0,
 		context: 5,
+		output: output,
 	}
-	s.SwitchTo(item)
+	s.m.Lock()
+	s.switchTo(item)
+	s.m.Unlock()
 	return s
 }

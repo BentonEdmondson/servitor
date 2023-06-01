@@ -9,8 +9,8 @@ type Tangible interface {
 
 	String(width int) string
 	Preview(width int) string
-	Parents(quantity uint) []Tangible
-	Children(quantity uint) ([]Tangible, Container, uint)
+	Parents(quantity uint) ([]Tangible, Tangible)
+	Children() Container
 }
 
 type Container interface {

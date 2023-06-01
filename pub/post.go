@@ -100,33 +100,36 @@ func (p *Post) Kind() (string) {
 	return p.kind
 }
 
-func (p *Post) Children(quantity uint) ([]Tangible, Container, uint) {
-	if errors.Is(p.commentsErr, object.ErrKeyNotPresent) {
-		return []Tangible{}, nil, 0
+func (p *Post) Children() Container {
+	/* the if is necessary because my understanding is
+	the first nil is a (*Collection)(nil) whereas
+	the second is (Container)(nil) */
+	if p.comments == nil {
+		return nil
+	} else {
+		return p.comments
 	}
-	if p.commentsErr != nil {
-		return []Tangible{
-			NewFailure(p.commentsErr),
-		}, nil, 0
-	}
-	return p.comments.Harvest(quantity, 0)
 }
 
-func (p *Post) Parents(quantity uint) []Tangible {
+func (p *Post) Parents(quantity uint) ([]Tangible, Tangible) {
 	if quantity == 0 {
-		return []Tangible{}
+		panic("can't fetch 0 parents")
 	}
 	if errors.Is(p.parentErr, object.ErrKeyNotPresent) {
-		return []Tangible{}
+		return []Tangible{}, nil
 	}
 	if p.parentErr != nil {
-		return []Tangible{NewFailure(p.parentErr)}
+		return []Tangible{NewFailure(p.parentErr)}, nil
 	}
 	fetchedParent, fetchedParentErr := NewPost(p.parent, p.id)
 	if fetchedParentErr != nil {
-		return []Tangible{NewFailure(fetchedParentErr)}
+		return []Tangible{NewFailure(fetchedParentErr)}, nil
 	}
-	return append([]Tangible{fetchedParent}, fetchedParent.Parents(quantity - 1)...)
+	if quantity == 1 {
+		return []Tangible{fetchedParent}, fetchedParent
+	}
+	fetchedParentParents, fetchedParentFrontier := fetchedParent.Parents(quantity - 1)
+	return append([]Tangible{fetchedParent}, fetchedParentParents...), fetchedParentFrontier
 }
 
 func (p *Post) header(width int) string {
