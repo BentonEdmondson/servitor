@@ -3,6 +3,7 @@ module mimicry
 go 1.20
 
 require (
+	github.com/BurntSushi/toml v1.3.0
 	github.com/hashicorp/golang-lru/v2 v2.0.2
 	github.com/yuin/goldmark v1.5.4
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
