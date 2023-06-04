@@ -129,18 +129,14 @@ func (s *State) SetWidthHeight(width int, height int) {
 }
 
 func (s *State) loadSurroundings() {
-	feed := s.feed
-	frontier := s.frontier
-	page := s.page
-	basepoint := s.basepoint
-	context := s.context
-	if !s.loadingUp && !feed.Contains(s.index - context) && frontier != nil {
+	var prior State = *s
+	if !s.loadingUp && !s.feed.Contains(s.index - s.context) && s.frontier != nil {
 		s.loadingUp = true
 		go func() {
-			parents, newFrontier := frontier.Parents(uint(context))
+			parents, newFrontier := prior.frontier.Parents(uint(prior.context))
+			prior.feed.Prepend(parents)
 			s.m.Lock()
-			feed.Prepend(parents)
-			if feed == s.feed {
+			if prior.feed == s.feed {
 				s.frontier = newFrontier
 				s.loadingUp = false
 				s.output(s.View())
@@ -148,13 +144,13 @@ func (s *State) loadSurroundings() {
 			s.m.Unlock()
 		}()
 	}
-	if !s.loadingDown && !feed.Contains(s.index + context) && page != nil {
+	if !s.loadingDown && !s.feed.Contains(s.index + s.context) && s.page != nil {
 		s.loadingDown = true
 		go func() {
-			children, newPage, newBasepoint := page.Harvest(uint(context), basepoint)
+			children, newPage, newBasepoint := prior.page.Harvest(uint(prior.context), prior.basepoint)
+			prior.feed.Append(children)
 			s.m.Lock()
-			feed.Append(children)
-			if feed == s.feed {
+			if prior.feed == s.feed {
 				s.page = newPage
 				s.basepoint = newBasepoint
 				s.loadingDown = false
