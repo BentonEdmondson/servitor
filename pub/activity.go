@@ -9,6 +9,8 @@ import (
 	"mimicry/ansi"
 	"mimicry/style"
 	"sync"
+	"time"
+	"errors"
 )
 
 type Activity struct {
@@ -16,6 +18,7 @@ type Activity struct {
 	id *url.URL
 
 	actor *Actor; actorErr error
+	created time.Time; createdErr error
 	target Tangible
 }
 
@@ -38,6 +41,8 @@ func NewActivityFromObject(o object.Object, id *url.URL) (*Activity, error) {
 	}, a.kind) {
 		return nil, fmt.Errorf("%w: %s is not an Activity", ErrWrongType, a.kind)
 	}
+
+	a.created, a.createdErr = o.GetTime("published")
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -102,4 +107,17 @@ func (a *Activity) Children() Container {
 
 func (a *Activity) Parents(quantity uint) ([]Tangible, Tangible) {
 	return a.target.Parents(quantity)
+}
+
+func (a *Activity) Timestamp() time.Time {
+	if errors.Is(a.createdErr, object.ErrKeyNotPresent) {
+		if a.kind == "Create" {
+			return a.target.Timestamp()
+		} else {
+			return time.Time{}
+		}
+	} else if a.createdErr != nil {
+		return time.Time{}
+	}
+	return a.created
 }

@@ -1,34 +1,68 @@
 package main
 
 import (
-	"os"
-	"golang.org/x/term"
-	"strings"
+	"mimicry/config"
 	"mimicry/ui"
+	"os"
+	"strings"
 	"time"
+
+	"golang.org/x/term"
 )
 
 // TODO: clean up most panics
 
 func main() {
-	if len(os.Args) != 2 { 
-		panic("must provide 2 arguments")
-	}
 	oldTerminal, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	defer term.Restore(int(os.Stdin.Fd()), oldTerminal)
 	width, height, err := term.GetSize(int(os.Stdin.Fd()))
-	if err != nil { panic(err) }
-	printRaw("")
+	if err != nil {
+		panic(err)
+	}
+	config, err := config.Parse()
+	if err != nil {
+		panic(err)
+	}
+	state := ui.NewState(config, width, height, printRaw)
 
-	state := ui.Start(os.Args[1], printRaw)
-	state.SetWidthHeight(width, height)
+	if len(os.Args) < 2 {
+		help()
+		return
+	}
+
+	// TODO: resize currently doesn't work until these
+	// network requests complete
+	switch os.Args[1] {
+	case "open":
+		if len(os.Args) == 3 {
+			state.Open(os.Args[2])
+		} else {
+			help()
+			return
+		}
+	case "feed":
+		if len(os.Args) == 2 {
+			state.Feed("default")
+		} else if len(os.Args) == 3 {
+			state.Feed(os.Args[2])
+		} else {
+			help()
+			return
+		}
+	default:
+		panic("expected a command as the first argument")
+	}
 
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
 			width, height, err := term.GetSize(int(os.Stdin.Fd()))
-			if err != nil { panic(err) }
+			if err != nil {
+				panic(err)
+			}
 			state.SetWidthHeight(width, height)
 		}
 	}()
@@ -50,5 +84,11 @@ func main() {
 func printRaw(output string) {
 	output = strings.ReplaceAll(output, "\n", "\r\n")
 	_, err := os.Stdout.WriteString("\x1b[0;0H\x1b[2J" + output)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
+}
+
+func help() {
+	os.Stdout.WriteString("here's the help page\n")
 }

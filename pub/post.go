@@ -169,7 +169,7 @@ func (p *Post) header(width int) string {
 	if p.createdErr != nil && !errors.Is(p.createdErr, object.ErrKeyNotPresent) {
 		output += " at " + style.Problem(p.createdErr)
 	} else {
-		output += " at " + style.Color(p.created.Format(timeFormat))
+		output += " at " + style.Color(time.Since(p.created).Round(time.Minute).String())
 	}
 
 	return ansi.Wrap(output, width)
@@ -265,4 +265,12 @@ func (p *Post) Preview(width int) string {
 	}
 
 	return output
+}
+
+func (p *Post) Timestamp() time.Time {
+	if p.createdErr != nil {
+		return time.Time{}
+	} else {
+		return p.created
+	}
 }

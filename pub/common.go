@@ -13,10 +13,6 @@ var (
 	ErrWrongType = errors.New("item is the wrong type")
 )
 
-const (
-	timeFormat = "3:04 pm on 2 Jan 2006"
-)
-
 type TangibleWithName interface {
 	Tangible
 	Name() string

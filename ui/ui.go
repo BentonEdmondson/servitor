@@ -7,31 +7,35 @@ import (
 	"fmt"
 	"sync"
 	"mimicry/style"
+	"mimicry/config"
+	"mimicry/splicer"
 )
 
 type State struct {
-	m sync.Mutex
+	// TODO: the part stored in the history array is
+	// called page, page will be renamed to children
+	m *sync.Mutex
 
 	feed *feed.Feed
 	index int
-	context int
-
+	
 	frontier pub.Tangible
 	loadingUp bool
-
+	
 	page pub.Container
 	basepoint uint
 	loadingDown bool
-
+	
 	width int
 	height int
-
 	output func(string)
+	
+	config *config.Config
 }
 
 func (s *State) View() string {
 	var top, center, bottom string
-	for i := s.index - s.context; i <= s.index + s.context; i++ {
+	for i := s.index - s.config.Context; i <= s.index + s.config.Context; i++ {
 		if !s.feed.Contains(i) {
 			continue
 		}
@@ -90,7 +94,6 @@ func (s *State) Update(input byte) {
 	case ' ': // select
 		s.m.Lock()
 		s.switchTo(s.feed.Get(s.index))
-		s.output(s.View())
 		s.m.Unlock()
 	}
 	// TODO: the catchall down here will be to look at s.feed.Get(s.index).References()
@@ -110,11 +113,16 @@ func (s *State) switchTo(item pub.Any)  {
 		s.loadSurroundings()
 	case pub.Container:
 		var children []pub.Tangible
-		children, s.page, s.basepoint = narrowed.Harvest(uint(s.context), 0)
+		children, s.page, s.basepoint = narrowed.Harvest(uint(s.config.Context), 0)
 		s.feed = feed.CreateAndAppend(children)
+		s.index = 1
+		s.loadingUp = false
+		s.loadingDown = false
+		s.basepoint = 0
 	default:
 		panic(fmt.Sprintf("unrecognized non-Tangible non-Container: %T", item))
 	}
+	s.output(s.View())
 }
 
 func (s *State) SetWidthHeight(width int, height int) {
@@ -130,10 +138,10 @@ func (s *State) SetWidthHeight(width int, height int) {
 
 func (s *State) loadSurroundings() {
 	var prior State = *s
-	if !s.loadingUp && !s.feed.Contains(s.index - s.context) && s.frontier != nil {
+	if !s.loadingUp && !s.feed.Contains(s.index - s.config.Context) && s.frontier != nil {
 		s.loadingUp = true
 		go func() {
-			parents, newFrontier := prior.frontier.Parents(uint(prior.context))
+			parents, newFrontier := prior.frontier.Parents(uint(prior.config.Context))
 			prior.feed.Prepend(parents)
 			s.m.Lock()
 			if prior.feed == s.feed {
@@ -144,10 +152,10 @@ func (s *State) loadSurroundings() {
 			s.m.Unlock()
 		}()
 	}
-	if !s.loadingDown && !s.feed.Contains(s.index + s.context) && s.page != nil {
+	if !s.loadingDown && !s.feed.Contains(s.index + s.config.Context) && s.page != nil {
 		s.loadingDown = true
 		go func() {
-			children, newPage, newBasepoint := prior.page.Harvest(uint(prior.context), prior.basepoint)
+			children, newPage, newBasepoint := prior.page.Harvest(uint(prior.config.Context), prior.basepoint)
 			prior.feed.Append(children)
 			s.m.Lock()
 			if prior.feed == s.feed {
@@ -161,16 +169,25 @@ func (s *State) loadSurroundings() {
 	}
 }
 
-func Start(input string, output func(string)) *State {
-	item := pub.FetchUserInput(input)
+func (s *State) Open(input string) {
+	s.output(ansi.CenterVertically("", style.Color("  Opening…"), "", uint(s.height)))
+	s.switchTo(pub.FetchUserInput(input))
+}
+
+func (s *State) Feed(input string) {
+	s.output(ansi.CenterVertically("", style.Color("  Loading feed…"), "", uint(s.height)))
+	s.switchTo(splicer.NewSplicer(s.config.Feeds[input]))
+}
+
+func NewState(config *config.Config, width int, height int, output func(string)) *State {
 	s := &State{
 		feed: &feed.Feed{},
 		index: 0,
-		context: 5,
+		config: config,
+		width: width,
+		height: height,
 		output: output,
+		m: &sync.Mutex{},
 	}
-	s.m.Lock()
-	s.switchTo(item)
-	s.m.Unlock()
 	return s
 }

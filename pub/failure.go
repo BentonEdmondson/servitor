@@ -2,6 +2,7 @@ package pub
 
 import (
 	"mimicry/style"
+	"time"
 )
 
 type Failure struct {
@@ -35,4 +36,8 @@ func (f *Failure) Parents(uint) ([]Tangible, Tangible) {
 
 func (f *Failure) Children() Container {
 	return nil
+}
+
+func (f *Failure) Timestamp() time.Time {
+	return time.Time{}
 }

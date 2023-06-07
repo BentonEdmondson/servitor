@@ -196,3 +196,11 @@ func (a Actor) Preview(width int) string {
 
 	return output
 }
+
+func (a *Actor) Timestamp() time.Time {
+	if a.joinedErr != nil {
+		return time.Time{}
+	} else {
+		return a.joined
+	}
+}
