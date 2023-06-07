@@ -8,15 +8,12 @@ import (
 )
 
 type Config struct {
-	General general
+	Context int
+	Timeout int
 	Feeds feeds
 	Algos algos
 }
 
-type general = struct {
-	Context int
-	Timeout int
-}
 type feeds = map[string][]string
 type algos = map[string]struct {
 	Server string
@@ -25,10 +22,8 @@ type algos = map[string]struct {
 
 func Parse() (*Config, error) {
 	config := &Config {
-		General: general{
-			Context: 5,
-			Timeout: 10,
-		},
+		Context: 5,
+		Timeout: 10,
 		Feeds: feeds{},
 		Algos: algos{},
 	}
