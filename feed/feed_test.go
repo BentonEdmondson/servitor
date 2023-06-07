@@ -6,12 +6,12 @@ import (
 	"mimicry/object"
 )
 
-var post1, _ = pub.NewPost(object.Object {
+var post1, _ = pub.NewPostFromObject(object.Object {
 	"type": "Note",
 	"content": "Hello!",
 }, nil)
 
-var post2, _ = pub.NewPost(object.Object {
+var post2, _ = pub.NewPostFromObject(object.Object {
 	"type": "Video",
 	"content": "Goodbye!",
 }, nil)
