@@ -33,8 +33,6 @@ func main() {
 		return
 	}
 
-	// TODO: resize currently doesn't work until these
-	// network requests complete
 	switch os.Args[1] {
 	case "open":
 		if len(os.Args) == 3 {

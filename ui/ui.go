@@ -33,7 +33,11 @@ type State struct {
 	config *config.Config
 }
 
-func (s *State) View() string {
+func (s *State) view() string {
+	if s.feed.IsEmpty() {
+		return ansi.CenterVertically("", style.Color("  Loading…"), "", uint(s.height))
+	}
+
 	var top, center, bottom string
 	for i := s.index - s.config.Context; i <= s.index+s.config.Context; i++ {
 		if !s.feed.Contains(i) {
@@ -43,7 +47,7 @@ func (s *State) View() string {
 		if i == 0 {
 			serialized = s.feed.Get(i).String(s.width - 4)
 		} else if i > 0 {
-			serialized = "╰ " + ansi.Indent(s.feed.Get(i).Preview(s.width-4), "  ", false)
+			serialized = "→ " + ansi.Indent(s.feed.Get(i).Preview(s.width-4), "  ", false)
 		} else {
 			serialized = s.feed.Get(i).Preview(s.width - 4)
 		}
@@ -53,12 +57,12 @@ func (s *State) View() string {
 			if top != "" {
 				top += "\n"
 			}
-			top += ansi.Indent(serialized+"\n│", "  ", true)
+			top += ansi.Indent(serialized+"\n", "  ", true)
 		} else {
 			if bottom != "" {
 				bottom += "\n"
 			}
-			bottom += ansi.Indent("│\n"+serialized, "  ", true)
+			bottom += ansi.Indent("\n"+serialized, "  ", true)
 		}
 	}
 	if s.loadingUp {
@@ -84,7 +88,7 @@ func (s *State) Update(input byte) {
 			s.index -= 1
 		}
 		s.loadSurroundings()
-		s.output(s.View())
+		s.output(s.view())
 		s.m.Unlock()
 	case 'j': // down
 		s.m.Lock()
@@ -92,12 +96,14 @@ func (s *State) Update(input byte) {
 			s.index += 1
 		}
 		s.loadSurroundings()
-		s.output(s.View())
+		s.output(s.view())
 		s.m.Unlock()
 	case 'g': // return to OP
 		s.m.Lock()
-		s.index = 0
-		s.output(s.View())
+		if s.feed.Contains(0) {
+			s.index = 0
+			s.output(s.view())
+		}
 		s.m.Unlock()
 	case ' ': // select
 		s.m.Lock()
@@ -109,28 +115,25 @@ func (s *State) Update(input byte) {
 }
 
 func (s *State) switchTo(item pub.Any) {
+	s.loadingUp = false
+	s.loadingDown = false
+	s.basepoint = 0
 	switch narrowed := item.(type) {
 	case pub.Tangible:
 		s.feed = feed.Create(narrowed)
-		s.frontier = narrowed
-		s.page = narrowed.Children()
 		s.index = 0
-		s.loadingUp = false
-		s.loadingDown = false
-		s.basepoint = 0
-		s.loadSurroundings()
+		s.page = narrowed.Children()
+		s.frontier = narrowed
 	case pub.Container:
-		var children []pub.Tangible
-		children, s.page, s.basepoint = narrowed.Harvest(uint(s.config.Context), 0)
-		s.feed = feed.CreateAndAppend(children)
+		s.feed = feed.CreateEmpty()
 		s.index = 1
-		s.loadingUp = false
-		s.loadingDown = false
-		s.basepoint = 0
+		s.page = narrowed
+		s.frontier = nil
 	default:
 		panic(fmt.Sprintf("unrecognized non-Tangible non-Container: %T", item))
 	}
-	s.output(s.View())
+	s.loadSurroundings()
+	s.output(s.view())
 }
 
 func (s *State) SetWidthHeight(width int, height int) {
@@ -141,7 +144,7 @@ func (s *State) SetWidthHeight(width int, height int) {
 	}
 	s.width = width
 	s.height = height
-	s.output(s.View())
+	s.output(s.view())
 }
 
 func (s *State) loadSurroundings() {
@@ -150,12 +153,12 @@ func (s *State) loadSurroundings() {
 		s.loadingUp = true
 		go func() {
 			parents, newFrontier := prior.frontier.Parents(uint(prior.config.Context))
-			prior.feed.Prepend(parents)
 			s.m.Lock()
+			prior.feed.Prepend(parents)
 			if prior.feed == s.feed {
 				s.frontier = newFrontier
 				s.loadingUp = false
-				s.output(s.View())
+				s.output(s.view())
 			}
 			s.m.Unlock()
 		}()
@@ -164,13 +167,13 @@ func (s *State) loadSurroundings() {
 		s.loadingDown = true
 		go func() {
 			children, newPage, newBasepoint := prior.page.Harvest(uint(prior.config.Context), prior.basepoint)
-			prior.feed.Append(children)
 			s.m.Lock()
+			prior.feed.Append(children)
 			if prior.feed == s.feed {
 				s.page = newPage
 				s.basepoint = newBasepoint
 				s.loadingDown = false
-				s.output(s.View())
+				s.output(s.view())
 			}
 			s.m.Unlock()
 		}()
@@ -178,18 +181,33 @@ func (s *State) loadSurroundings() {
 }
 
 func (s *State) Open(input string) {
-	s.output(ansi.CenterVertically("", style.Color("  Opening…"), "", uint(s.height)))
-	s.switchTo(pub.FetchUserInput(input))
+	go func() {
+		s.m.Lock()
+		s.output(s.view())
+		s.m.Unlock()
+		result := pub.FetchUserInput(input)
+		s.m.Lock()
+		s.switchTo(result)
+		s.m.Unlock()
+	}()
 }
 
 func (s *State) Feed(input string) {
-	s.output(ansi.CenterVertically("", style.Color("  Loading feed…"), "", uint(s.height)))
-	s.switchTo(splicer.NewSplicer(s.config.Feeds[input]))
+	go func() {
+		s.m.Lock()
+		s.output(s.view())
+		inputs := s.config.Feeds[input]
+		s.m.Unlock()
+		result := splicer.NewSplicer(inputs)
+		s.m.Lock()
+		s.switchTo(result)
+		s.m.Unlock()
+	}()
 }
 
 func NewState(config *config.Config, width int, height int, output func(string)) *State {
 	s := &State{
-		feed:   &feed.Feed{},
+		feed:   feed.CreateEmpty(),
 		index:  0,
 		config: config,
 		width:  width,

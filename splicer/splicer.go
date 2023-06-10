@@ -95,12 +95,16 @@ func NewSplicer(inputs []string) *Splicer {
 				panic("cannot splice non-Tangible, non-Collection")
 			}
 
-			var elements []pub.Tangible
-			elements, s[i].page, s[i].basepoint = children.Harvest(1, 0)
-			if len(elements) > 1 {
-				panic("harvest returned more that one element when I only asked for one")
+			if children != nil {
+				var elements []pub.Tangible
+				elements, s[i].page, s[i].basepoint = children.Harvest(1, 0)
+				if len(elements) > 1 {
+					panic("harvest returned more that one element when I only asked for one")
+				} else {
+					s[i].element = elements[0]
+				}
 			} else {
-				s[i].element = elements[0]
+				s[i].element = nil
 			}
 			wg.Done()
 		}()
