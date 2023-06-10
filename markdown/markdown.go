@@ -1,8 +1,8 @@
 package markdown
 
 import (
-    "bytes"
-    "github.com/yuin/goldmark"
+	"bytes"
+	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"mimicry/hypertext"
 	"strings"

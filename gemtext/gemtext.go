@@ -2,8 +2,8 @@ package gemtext
 
 import (
 	"mimicry/style"
-	"strings"
 	"regexp"
+	"strings"
 )
 
 /*

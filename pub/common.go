@@ -1,11 +1,11 @@
 package pub
 
 import (
-	"mimicry/object"
-	"fmt"
 	"errors"
-	"net/url"
+	"fmt"
 	"mimicry/client"
+	"mimicry/object"
+	"net/url"
 	"sync"
 )
 
@@ -17,6 +17,7 @@ type TangibleWithName interface {
 	Tangible
 	Name() string
 }
+
 func getActors(o object.Object, key string, source *url.URL) []TangibleWithName {
 	list, err := o.GetList(key)
 	if errors.Is(err, object.ErrKeyNotPresent) {
@@ -55,10 +56,14 @@ func getPostOrActor(o object.Object, key string, source *url.URL) Tangible {
 	if asMap, ok := reference.(map[string]any); ok {
 		o := object.Object(asMap)
 		kind, err := o.GetString("type")
-		if err != nil { return NewFailure(err) }
+		if err != nil {
+			return NewFailure(err)
+		}
 		if kind == "Create" {
 			reference, err = o.GetAny("object")
-			if err != nil { return NewFailure(err) }
+			if err != nil {
+				return NewFailure(err)
+			}
 		}
 	}
 
@@ -134,7 +139,7 @@ func NewTangible(input any, source *url.URL) Tangible {
 }
 
 /*
-	"Shorthand" just means individual strings are converted into Links
+"Shorthand" just means individual strings are converted into Links
 */
 func getLinksShorthand(o object.Object, key string) ([]*Link, error) {
 	list, err := o.GetList(key)
@@ -153,7 +158,7 @@ func getLinksShorthand(o object.Object, key string) ([]*Link, error) {
 			}
 			output[i] = link
 		case string:
-			link, err := NewLink(object.Object {
+			link, err := NewLink(object.Object{
 				"type": "Link",
 				"href": narrowed,
 			})
@@ -202,6 +207,8 @@ func getLinks(o object.Object, key string) ([]*Link, error) {
 
 func getBestLink(o object.Object, key string, supertype string) (*Link, error) {
 	links, err := getLinks(o, key)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return SelectBestLink(links, supertype)
 }

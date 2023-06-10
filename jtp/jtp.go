@@ -1,17 +1,17 @@
 package jtp
 
 import (
-	"regexp"
-	"errors"
+	"bufio"
 	"crypto/tls"
+	"encoding/json"
+	"errors"
+	"fmt"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"net"
 	"net/url"
-	"bufio"
-	"fmt"
+	"regexp"
 	"strings"
-	"encoding/json"
 	"time"
-	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 var dialer = &net.Dialer{
@@ -19,10 +19,11 @@ var dialer = &net.Dialer{
 }
 
 type bundle struct {
-	item map[string]any
+	item   map[string]any
 	source *url.URL
-	err error
+	err    error
 }
+
 var cache, _ = lru.New[string, bundle](128)
 
 var mediaTypeRegexp = regexp.MustCompile(`(?s)^(([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)/([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)).*$`)
@@ -37,10 +38,13 @@ var locationRegexp = regexp.MustCompile(`^(?i:location):[ \t\r]*(.*?)[ \t\r]*\n$
 */
 
 /*
-	link
-		the url being requested
-	maxRedirects
-		the maximum number of redirects to take
+link
+
+	the url being requested
+
+maxRedirects
+
+	the maximum number of redirects to take
 */
 func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (map[string]any, *url.URL, error) {
 	if cached, ok := cache.Get(link.String()); ok {
@@ -59,16 +63,16 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 	// TODO: link.Host may work instead of needing net.JoinHostPort
 	hostport := net.JoinHostPort(link.Hostname(), port)
 
-	connection, err := tls.DialWithDialer(dialer, "tcp", hostport, /*config =*/nil)
+	connection, err := tls.DialWithDialer(dialer, "tcp", hostport /*config =*/, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	_, err = connection.Write([]byte(
 		"GET " + link.RequestURI() + " HTTP/1.0\r\n" +
-		"Host: " + link.Host + "\r\n" +
-		"Accept: " + accept + "\r\n" +
-		"\r\n",
+			"Host: " + link.Host + "\r\n" +
+			"Accept: " + accept + "\r\n" +
+			"\r\n",
 	))
 	if err != nil {
 		return nil, nil, errors.Join(err, connection.Close())
@@ -96,7 +100,7 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 
 		if maxRedirects == 0 {
 			return nil, nil, errors.Join(
-				errors.New("Received " + status + " but max redirects has already been reached"),
+				errors.New("Received "+status+" but max redirects has already been reached"),
 				connection.Close(),
 			)
 		}
@@ -105,14 +109,14 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 			return nil, nil, err
 		}
 		var b bundle
-		b.item, b.source, b.err = Get(location, accept, tolerated, maxRedirects - 1)
+		b.item, b.source, b.err = Get(location, accept, tolerated, maxRedirects-1)
 		cache.Add(link.String(), b)
 		return b.item, b.source, b.err
 	}
 
 	if status != "200" && status != "201" && status != "202" && status != "203" {
 		return nil, nil, errors.Join(
-			errors.New("received invalid status " + status),
+			errors.New("received invalid status "+status),
 			connection.Close(),
 		)
 	}
@@ -135,10 +139,10 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 		return nil, nil, err
 	}
 
-	cache.Add(link.String(), bundle {
-		item: dictionary,
+	cache.Add(link.String(), bundle{
+		item:   dictionary,
 		source: link,
-		err: nil,
+		err:    nil,
 	})
 	return dictionary, link, nil
 }
@@ -243,7 +247,7 @@ func findLocation(buf *bufio.Reader, baseLink *url.URL) (*url.URL, error) {
 
 type MediaType struct {
 	Supertype string
-	Subtype string
+	Subtype   string
 	/* Full omits the parameters */
 	Full string
 }
@@ -257,8 +261,8 @@ func ParseMediaType(text string) (*MediaType, error) {
 
 	return &MediaType{
 		Supertype: matches[2],
-		Subtype: matches[3],
-		Full: matches[1],
+		Subtype:   matches[3],
+		Full:      matches[1],
 	}, nil
 }
 

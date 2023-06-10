@@ -2,8 +2,8 @@ package style
 
 import (
 	"fmt"
-	"strings"
 	"mimicry/ansi"
+	"strings"
 )
 
 func background(text string, r uint8, g uint8, b uint8) string {

@@ -2,22 +2,24 @@ package render
 
 import (
 	"errors"
-	"mimicry/hypertext"
-	"mimicry/plaintext"
 	"mimicry/gemtext"
+	"mimicry/hypertext"
 	"mimicry/markdown"
+	"mimicry/plaintext"
 	"strings"
 	"unicode"
 )
 
 // TODO: perhaps `dropControlCharacters` should happen to all
+//
 //	`getNatural` strings when they are pulled from the JSON
+//
 // TODO: need to add a width parameter to all of this
 func Render(text string, mediaType string, width int) (string, error) {
 	text = strings.Map(dropControlCharacters, text)
 
 	switch {
-	case mediaType == "text/plain": 
+	case mediaType == "text/plain":
 		return plaintext.Render(text, width)
 	case mediaType == "text/html":
 		return hypertext.Render(text, width)

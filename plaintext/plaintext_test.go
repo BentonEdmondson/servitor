@@ -1,10 +1,10 @@
 package plaintext
 
 import (
-	"testing"
+	"mimicry/ansi"
 	"mimicry/style"
 	"mimicry/util"
-	"mimicry/ansi"
+	"testing"
 )
 
 func TestBasic(t *testing.T) {
@@ -16,9 +16,9 @@ Note the warning in <http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING
 		panic(err)
 	}
 
-	expected := ansi.Wrap("Yes, Jim, I found it under \"" + style.Link("http://www.w3.org/Addressing/") +
-	"\",\nbut you can probably pick it up from <" + style.Link("ftp://foo.example.com/rfc/") +
-	">.\nNote the warning in <" + style.Link("http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING") + ">.", 50)
+	expected := ansi.Wrap("Yes, Jim, I found it under \""+style.Link("http://www.w3.org/Addressing/")+
+		"\",\nbut you can probably pick it up from <"+style.Link("ftp://foo.example.com/rfc/")+
+		">.\nNote the warning in <"+style.Link("http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING")+">.", 50)
 
 	util.AssertEqual(expected, output, t)
 }

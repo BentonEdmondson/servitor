@@ -1,8 +1,8 @@
 package pub
 
 import (
-	"strings"
 	"mimicry/client"
+	"strings"
 )
 
 func FetchUserInput(text string) Any {

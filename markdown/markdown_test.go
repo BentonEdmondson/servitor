@@ -1,9 +1,9 @@
 package markdown
 
 import (
+	"mimicry/style"
 	"mimicry/util"
 	"testing"
-	"mimicry/style"
 )
 
 func TestBasic(t *testing.T) {
@@ -20,7 +20,7 @@ func TestBasic(t *testing.T) {
 
 	expected := style.Link("Here's a link!") + "\n\n" +
 		style.LinkBlock("This is a beautiful image!") + "\n\n" +
-		style.Bullet("Nested list\n" + style.Bullet("Nesting"))
+		style.Bullet("Nested list\n"+style.Bullet("Nesting"))
 
 	util.AssertEqual(expected, output, t)
 }

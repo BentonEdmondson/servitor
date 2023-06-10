@@ -1,0 +1,6 @@
+{
+    "[go]": {
+        // format by running go fmt mimicry/... repeatedly until fixed point is reached
+        "editor.formatOnSave": false
+    }
+}

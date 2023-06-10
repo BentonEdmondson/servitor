@@ -1,30 +1,34 @@
 package pub
 
 import (
-	"net/url"
-	"mimicry/object"
-	"mimicry/client"
+	"errors"
 	"fmt"
 	"golang.org/x/exp/slices"
 	"mimicry/ansi"
+	"mimicry/client"
+	"mimicry/object"
 	"mimicry/style"
+	"net/url"
 	"sync"
 	"time"
-	"errors"
 )
 
 type Activity struct {
 	kind string
-	id *url.URL
+	id   *url.URL
 
-	actor *Actor; actorErr error
-	created time.Time; createdErr error
-	target Tangible
+	actor      *Actor
+	actorErr   error
+	created    time.Time
+	createdErr error
+	target     Tangible
 }
 
 func NewActivity(input any, source *url.URL) (*Activity, error) {
 	o, id, err := client.FetchUnknown(input, source)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return NewActivityFromObject(o, id)
 }
 
@@ -46,8 +50,8 @@ func NewActivityFromObject(o object.Object, id *url.URL) (*Activity, error) {
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go func () {a.actor, a.actorErr = getActor(o, "actor", a.id); wg.Done()}()
-	go func() {a.target = getPostOrActor(o, "object", a.id); wg.Done()}()
+	go func() { a.actor, a.actorErr = getActor(o, "actor", a.id); wg.Done() }()
+	go func() { a.target = getPostOrActor(o, "object", a.id); wg.Done() }()
 	wg.Wait()
 
 	return a, nil

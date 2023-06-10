@@ -1,14 +1,14 @@
 package ui
 
 import (
-	"mimicry/pub"
-	"mimicry/ansi"
-	"mimicry/feed"
 	"fmt"
-	"sync"
-	"mimicry/style"
+	"mimicry/ansi"
 	"mimicry/config"
+	"mimicry/feed"
+	"mimicry/pub"
 	"mimicry/splicer"
+	"mimicry/style"
+	"sync"
 )
 
 type State struct {
@@ -16,26 +16,26 @@ type State struct {
 	// called page, page will be renamed to children
 	m *sync.Mutex
 
-	feed *feed.Feed
+	feed  *feed.Feed
 	index int
-	
-	frontier pub.Tangible
+
+	frontier  pub.Tangible
 	loadingUp bool
-	
-	page pub.Container
-	basepoint uint
+
+	page        pub.Container
+	basepoint   uint
 	loadingDown bool
-	
-	width int
+
+	width  int
 	height int
 	output func(string)
-	
+
 	config *config.Config
 }
 
 func (s *State) View() string {
 	var top, center, bottom string
-	for i := s.index - s.config.Context; i <= s.index + s.config.Context; i++ {
+	for i := s.index - s.config.Context; i <= s.index+s.config.Context; i++ {
 		if !s.feed.Contains(i) {
 			continue
 		}
@@ -43,26 +43,34 @@ func (s *State) View() string {
 		if i == 0 {
 			serialized = s.feed.Get(i).String(s.width - 4)
 		} else if i > 0 {
-			serialized = "╰ " + ansi.Indent(s.feed.Get(i).Preview(s.width - 4), "  ", false)
+			serialized = "╰ " + ansi.Indent(s.feed.Get(i).Preview(s.width-4), "  ", false)
 		} else {
 			serialized = s.feed.Get(i).Preview(s.width - 4)
 		}
 		if i == s.index {
 			center = ansi.Indent(serialized, "┃ ", true)
 		} else if i < s.index {
-			if top != "" { top += "\n" }
-			top += ansi.Indent(serialized + "\n│", "  ", true)
+			if top != "" {
+				top += "\n"
+			}
+			top += ansi.Indent(serialized+"\n│", "  ", true)
 		} else {
-			if bottom != "" { bottom += "\n" }
-			bottom += ansi.Indent("│\n" + serialized, "  ", true)
+			if bottom != "" {
+				bottom += "\n"
+			}
+			bottom += ansi.Indent("│\n"+serialized, "  ", true)
 		}
 	}
 	if s.loadingUp {
-		if top != "" { top += "\n" }
+		if top != "" {
+			top += "\n"
+		}
 		top = "  " + style.Color("Loading…") + "\n" + top
 	}
 	if s.loadingDown {
-		if bottom != "" { bottom += "\n" }
+		if bottom != "" {
+			bottom += "\n"
+		}
 		bottom += "\n  " + style.Color("Loading…")
 	}
 	return ansi.CenterVertically(top, center, bottom, uint(s.height))
@@ -100,7 +108,7 @@ func (s *State) Update(input byte) {
 	// for urls to switch to
 }
 
-func (s *State) switchTo(item pub.Any)  {
+func (s *State) switchTo(item pub.Any) {
 	switch narrowed := item.(type) {
 	case pub.Tangible:
 		s.feed = feed.Create(narrowed)
@@ -138,7 +146,7 @@ func (s *State) SetWidthHeight(width int, height int) {
 
 func (s *State) loadSurroundings() {
 	var prior State = *s
-	if !s.loadingUp && !s.feed.Contains(s.index - s.config.Context) && s.frontier != nil {
+	if !s.loadingUp && !s.feed.Contains(s.index-s.config.Context) && s.frontier != nil {
 		s.loadingUp = true
 		go func() {
 			parents, newFrontier := prior.frontier.Parents(uint(prior.config.Context))
@@ -152,7 +160,7 @@ func (s *State) loadSurroundings() {
 			s.m.Unlock()
 		}()
 	}
-	if !s.loadingDown && !s.feed.Contains(s.index + s.config.Context) && s.page != nil {
+	if !s.loadingDown && !s.feed.Contains(s.index+s.config.Context) && s.page != nil {
 		s.loadingDown = true
 		go func() {
 			children, newPage, newBasepoint := prior.page.Harvest(uint(prior.config.Context), prior.basepoint)
@@ -181,13 +189,13 @@ func (s *State) Feed(input string) {
 
 func NewState(config *config.Config, width int, height int, output func(string)) *State {
 	s := &State{
-		feed: &feed.Feed{},
-		index: 0,
+		feed:   &feed.Feed{},
+		index:  0,
 		config: config,
-		width: width,
+		width:  width,
 		height: height,
 		output: output,
-		m: &sync.Mutex{},
+		m:      &sync.Mutex{},
 	}
 	return s
 }

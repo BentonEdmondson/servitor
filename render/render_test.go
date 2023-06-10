@@ -1,9 +1,9 @@
 package render
 
 import (
-	"testing"
 	"mimicry/style"
 	"mimicry/util"
+	"testing"
 )
 
 func TestControlCharacterEscapes(t *testing.T) {

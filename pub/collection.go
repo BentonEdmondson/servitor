@@ -1,12 +1,12 @@
 package pub
 
 import (
-	"net/url"
-	"mimicry/object"
 	"errors"
-	"mimicry/client"
 	"fmt"
 	"golang.org/x/exp/slices"
+	"mimicry/client"
+	"mimicry/object"
+	"net/url"
 	"sync"
 )
 
@@ -29,19 +29,25 @@ import (
 
 type Collection struct {
 	kind string
-	id *url.URL
+	id   *url.URL
 
-	elements []any; elementsErr error
-	next any; nextErr error
+	elements    []any
+	elementsErr error
+	next        any
+	nextErr     error
 
-	size uint64; sizeErr error
+	size    uint64
+	sizeErr error
 }
 
 func NewCollection(input any, source *url.URL) (*Collection, error) {
 	c := &Collection{}
-	var o object.Object; var err error
+	var o object.Object
+	var err error
 	o, c.id, err = client.FetchUnknown(input, source)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	if c.kind, err = o.GetString("type"); err != nil {
 		return nil, err
 	}
@@ -99,7 +105,7 @@ func (c *Collection) Harvest(amount uint, startingPoint uint) ([]Tangible, Conta
 	var amountFromThisPage uint
 	if startingPoint >= length {
 		amountFromThisPage = 0
-	} else if length > amount + startingPoint {
+	} else if length > amount+startingPoint {
 		amountFromThisPage = amount
 	} else {
 		amountFromThisPage = length - startingPoint
@@ -122,8 +128,8 @@ func (c *Collection) Harvest(amount uint, startingPoint uint) ([]Tangible, Conta
 
 	wg.Add(1)
 	go func() {
-		if length > amount + startingPoint {
-			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{}, c, amount + startingPoint
+		if length > amount+startingPoint {
+			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{}, c, amount+startingPoint
 		} else if errors.Is(c.nextErr, object.ErrKeyNotPresent) {
 			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{}, nil, 0
 		} else if c.nextErr != nil {
@@ -131,7 +137,7 @@ func (c *Collection) Harvest(amount uint, startingPoint uint) ([]Tangible, Conta
 		} else if next, err := NewCollection(c.next, c.id); err != nil {
 			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{NewFailure(err)}, nil, 0
 		} else {
-			fromLaterPages, nextCollection, nextStartingPoint = next.Harvest(amount - amountFromThisPage, 0)
+			fromLaterPages, nextCollection, nextStartingPoint = next.Harvest(amount-amountFromThisPage, 0)
 		}
 
 		wg.Done()

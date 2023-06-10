@@ -1,31 +1,31 @@
 package config
 
 import (
-	"fmt"
 	"errors"
-	"os"
+	"fmt"
 	"github.com/BurntSushi/toml"
+	"os"
 )
 
 type Config struct {
 	Context int
 	Timeout int
-	Feeds feeds
-	Algos algos
+	Feeds   feeds
+	Algos   algos
 }
 
 type feeds = map[string][]string
 type algos = map[string]struct {
 	Server string
-	Query string
+	Query  string
 }
 
 func Parse() (*Config, error) {
-	config := &Config {
+	config := &Config{
 		Context: 5,
 		Timeout: 10,
-		Feeds: feeds{},
-		Algos: algos{},
+		Feeds:   feeds{},
+		Algos:   algos{},
 	}
 
 	location := location()

@@ -1,15 +1,15 @@
 package client
 
 import (
-	"errors"
-	"net/url"
-	"strings"
-	"mimicry/jtp"
-	"os"
 	"encoding/json"
-	"mimicry/object"
+	"errors"
 	"fmt"
 	"golang.org/x/sync/singleflight"
+	"mimicry/jtp"
+	"mimicry/object"
+	"net/url"
+	"os"
+	"strings"
 )
 
 const MAX_REDIRECTS = 20
@@ -23,7 +23,9 @@ func FetchUnknown(input any, source *url.URL) (object.Object, *url.URL, error) {
 			return nil, nil, err
 		}
 		obj, source, err = FetchURL(url)
-		if err != nil { return nil, nil, err }
+		if err != nil {
+			return nil, nil, err
+		}
 	case map[string]any:
 		obj = object.Object(narrowed)
 	default:
@@ -41,10 +43,14 @@ func FetchUnknown(input any, source *url.URL) (object.Object, *url.URL, error) {
 	if id != nil {
 		if source == nil {
 			obj, source, err = FetchURL(id)
-			if err != nil { return nil, nil, err }
+			if err != nil {
+				return nil, nil, err
+			}
 		} else if (source.Host != id.Host) || len(obj) <= 2 {
 			obj, source, err = FetchURL(id)
-			if err != nil { return nil, nil, err }
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 
@@ -55,10 +61,11 @@ func FetchUnknown(input any, source *url.URL) (object.Object, *url.URL, error) {
 }
 
 var group singleflight.Group
+
 type bundle struct {
-	item map[string]any
+	item   map[string]any
 	source *url.URL
-	err error
+	err    error
 }
 
 /* A map of mutexes is used to ensure no two requests are made simultaneously.
@@ -68,11 +75,11 @@ type bundle struct {
 func FetchURL(uri *url.URL) (object.Object, *url.URL, error) {
 	uriString := uri.String()
 	b, _, _ := group.Do(uriString, func() (any, error) {
-		json, source, err := 
+		json, source, err :=
 			jtp.Get(
 				uri,
-				`application/activity+json,` +
-				`application/ld+json; profile="https://www.w3.org/ns/activitystreams"`,
+				`application/activity+json,`+
+					`application/ld+json; profile="https://www.w3.org/ns/activitystreams"`,
 				[]string{
 					"application/activity+json",
 					"application/ld+json",
@@ -80,10 +87,10 @@ func FetchURL(uri *url.URL) (object.Object, *url.URL, error) {
 				},
 				MAX_REDIRECTS,
 			)
-		return bundle {
-			item: json,
+		return bundle{
+			item:   json,
 			source: source,
-			err: err,
+			err:    err,
 		}, nil
 	})
 	/* By this point the result has been cached in the LRU cache,
@@ -93,8 +100,8 @@ func FetchURL(uri *url.URL) (object.Object, *url.URL, error) {
 }
 
 /*
-	converts a webfinger identifier to a url
-	see: https://datatracker.ietf.org/doc/html/rfc7033
+converts a webfinger identifier to a url
+see: https://datatracker.ietf.org/doc/html/rfc7033
 */
 func ResolveWebfinger(username string) (string, error) {
 	if len(username) == 0 || username[0] != '@' {
@@ -112,9 +119,9 @@ func ResolveWebfinger(username string) (string, error) {
 
 	link := &url.URL{
 		Scheme: "https",
-		Host: domain,
-		Path: "/.well-known/webfinger",
-		RawQuery: (url.Values {
+		Host:   domain,
+		Path:   "/.well-known/webfinger",
+		RawQuery: (url.Values{
 			"resource": []string{"acct:" + account + "@" + domain},
 		}).Encode(),
 	}

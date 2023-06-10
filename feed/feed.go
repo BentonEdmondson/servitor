@@ -1,19 +1,19 @@
 package feed
 
 import (
-	"mimicry/pub"
 	"fmt"
+	"mimicry/pub"
 )
 
 type Feed struct {
-	feed map[int]pub.Tangible
+	feed       map[int]pub.Tangible
 	upperBound int
 	lowerBound int
 }
 
 func Create(input pub.Tangible) *Feed {
-	return &Feed {
-		feed: map[int]pub.Tangible {
+	return &Feed{
+		feed: map[int]pub.Tangible{
 			0: input,
 		},
 		upperBound: 0,

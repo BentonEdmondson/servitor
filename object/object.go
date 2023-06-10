@@ -2,17 +2,17 @@ package object
 
 import (
 	"errors"
+	"fmt"
+	"mimicry/mime"
 	"net/url"
 	"time"
-	"mimicry/mime"
-	"fmt"
 )
 
 type Object map[string]any
 
 var (
 	ErrKeyNotPresent = errors.New("key is not present")
-	ErrKeyWrongType = errors.New("key is incorrect type")
+	ErrKeyWrongType  = errors.New("key is incorrect type")
 )
 
 /* Go doesn't allow generic methods */
@@ -96,7 +96,7 @@ func (o Object) GetMediaType(key string) (*mime.MediaType, error) {
 
 /* https://www.w3.org/TR/activitystreams-core/#naturalLanguageValues */
 func (o Object) GetNatural(key string, language string) (string, error) {
-	values, err := o.GetObject(key+"Map")
+	values, err := o.GetObject(key + "Map")
 	hasMap := true
 	if errors.Is(err, ErrKeyNotPresent) {
 		hasMap = false

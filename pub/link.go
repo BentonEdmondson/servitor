@@ -1,26 +1,26 @@
 package pub
 
 import (
-	"net/url"
 	"errors"
-	"mimicry/object"
-	"mimicry/mime"
 	"fmt"
 	"golang.org/x/exp/slices"
+	"mimicry/mime"
+	"mimicry/object"
+	"net/url"
 )
 
 type Link struct {
-	kind string
-	mediaType *mime.MediaType
+	kind         string
+	mediaType    *mime.MediaType
 	mediaTypeErr error
-	uri *url.URL
-	uriErr error
-	alt string
-	altErr error
-	height uint64
-	heightErr error
-	width uint64
-	widthErr error
+	uri          *url.URL
+	uriErr       error
+	alt          string
+	altErr       error
+	height       uint64
+	heightErr    error
+	width        uint64
+	widthErr     error
 }
 
 func NewLink(input any) (*Link, error) {
@@ -135,9 +135,13 @@ func SelectBestLink(links []*Link, supertype string) (*Link, error) {
 			continue
 		} else {
 			thisRating, err := thisLink.rating()
-			if err != nil { return nil, err }
+			if err != nil {
+				return nil, err
+			}
 			bestRating, err := bestLink.rating()
-			if err != nil { return nil, err }
+			if err != nil {
+				return nil, err
+			}
 			if thisRating > bestRating {
 				bestLink = thisLink
 				continue

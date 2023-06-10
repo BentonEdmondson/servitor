@@ -65,6 +65,7 @@ func Indent(text string, prefix string, includeFirst bool) string {
 }
 
 const suffix = " "
+
 func Pad(text string, length int) string {
 	expanded := expand(text)
 	result := ""
@@ -100,8 +101,8 @@ func Pad(text string, length int) string {
 }
 
 /*
-	I am not convinced this works perfectly, but it is well-tested,
-	so I will call it good for now.
+I am not convinced this works perfectly, but it is well-tested,
+so I will call it good for now.
 */
 func Wrap(text string, length int) string {
 	expanded := expand(text)
@@ -114,7 +115,7 @@ func Wrap(text string, length int) string {
 		letter := match[2]
 
 		/* TODO: I need to find the list of non-breaking whitespace characters
-			to exclude from this conditional */
+		to exclude from this conditional */
 		if !unicode.IsSpace([]rune(letter)[0]) {
 			if wordLength == length {
 				/*
@@ -123,27 +124,36 @@ func Wrap(text string, length int) string {
 					already necessarily forced line to be pushed)
 				*/
 				result = append(result, word)
-				line = ""; lineLength = 0
-				space = ""; spaceLength = 0
-				word = ""; wordLength = 0
-			}
-			
-			if lineLength + spaceLength + wordLength >= length {
-				/* The word no longer fits on the current line; push the current line */
-				result = append(result, line)
-				line = ""; lineLength = 0
-				space = ""; spaceLength = 0
+				line = ""
+				lineLength = 0
+				space = ""
+				spaceLength = 0
+				word = ""
+				wordLength = 0
 			}
 
-			word += full; wordLength += 1
+			if lineLength+spaceLength+wordLength >= length {
+				/* The word no longer fits on the current line; push the current line */
+				result = append(result, line)
+				line = ""
+				lineLength = 0
+				space = ""
+				spaceLength = 0
+			}
+
+			word += full
+			wordLength += 1
 			continue
 		}
 
 		/* This means whitespace has been encountered; if there's a word, add it to the line */
 		if wordLength > 0 {
-			line += space + word; lineLength += spaceLength + wordLength
-			space = ""; spaceLength = 0
-			word = ""; wordLength = 0
+			line += space + word
+			lineLength += spaceLength + wordLength
+			space = ""
+			spaceLength = 0
+			word = ""
+			wordLength = 0
 		}
 
 		if letter == "\n" {
@@ -152,23 +162,29 @@ func Wrap(text string, length int) string {
 				This ensures that Wrap(Pad(*)) doesn't eliminate the
 				padding.
 			*/
-			if lineLength + spaceLength <= length {
-				line += space; lineLength += spaceLength
+			if lineLength+spaceLength <= length {
+				line += space
+				lineLength += spaceLength
 			}
 
 			/* Add the current line as-is and clear everything */
 			result = append(result, line)
-			line = ""; lineLength = 0
-			space = ""; spaceLength = 0
-			word = ""; wordLength = 0
+			line = ""
+			lineLength = 0
+			space = ""
+			spaceLength = 0
+			word = ""
+			wordLength = 0
 		} else {
-			space += full; spaceLength += 1
+			space += full
+			spaceLength += 1
 		}
 	}
 
 	/* Cleanup */
 	if wordLength > 0 {
-		line += space + word; lineLength += spaceLength + wordLength
+		line += space + word
+		lineLength += spaceLength + wordLength
 	}
 	finalLetter := ""
 	if len(expanded) > 0 {
@@ -215,7 +231,7 @@ func DumbWrap(text string, width int) string {
 func Snip(text string, width, height int, ellipsis string) string {
 	snipped := []string{}
 
-	/* This split is fine because newlines are 
+	/* This split is fine because newlines are
 	   guaranteed to not be wrapped in ansi codes */
 	lines := strings.Split(text, "\n")
 
@@ -249,7 +265,7 @@ func Snip(text string, width, height int, ellipsis string) string {
 	if requiresEllipsis {
 		output += ellipsis
 	}
-	
+
 	return output
 }
 
@@ -274,16 +290,16 @@ func CenterVertically(prefix, centered, suffix string, height uint) string {
 	}
 	totalBufferSize := height - centeredHeight
 	topBufferSize := totalBufferSize / 2
-	bottomBufferSize := topBufferSize + totalBufferSize % 2
+	bottomBufferSize := topBufferSize + totalBufferSize%2
 
 	if topBufferSize > prefixHeight {
-		prefix = strings.Repeat("\n", int(topBufferSize - prefixHeight)) + prefix
+		prefix = strings.Repeat("\n", int(topBufferSize-prefixHeight)) + prefix
 	} else if topBufferSize < prefixHeight {
 		prefix = strings.Join(strings.Split(prefix, "\n")[prefixHeight-topBufferSize:], "\n")
 	}
 
 	if bottomBufferSize > suffixHeight {
-		suffix += strings.Repeat("\n", int(bottomBufferSize - suffixHeight))
+		suffix += strings.Repeat("\n", int(bottomBufferSize-suffixHeight))
 	} else if bottomBufferSize < suffixHeight {
 		suffix = strings.Join(strings.Split(suffix, "\n")[:bottomBufferSize], "\n")
 	}
@@ -304,5 +320,5 @@ func CenterVertically(prefix, centered, suffix string, height uint) string {
 		add `StrictWrap` function that wraps not based on whitespace
 		but strictly on length (this will be used for code blocks)
 
-		move `RemoveControlCharacters` from render to here 
+		move `RemoveControlCharacters` from render to here
 */

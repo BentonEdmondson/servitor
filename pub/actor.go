@@ -1,41 +1,51 @@
 package pub
 
 import (
-	"net/url"
-	"mimicry/style"
 	"errors"
-	"mimicry/object"
-	"time"
-	"mimicry/client"
-	"golang.org/x/exp/slices"
 	"fmt"
-	"strings"
+	"golang.org/x/exp/slices"
 	"mimicry/ansi"
+	"mimicry/client"
 	"mimicry/mime"
+	"mimicry/object"
 	"mimicry/render"
+	"mimicry/style"
+	"net/url"
+	"strings"
+	"time"
 )
 
 type Actor struct {
-	kind string
-	name string; nameErr error
-	handle string; handleErr error
+	kind      string
+	name      string
+	nameErr   error
+	handle    string
+	handleErr error
 
 	id *url.URL
 
-	bio string; bioErr error
-	mediaType *mime.MediaType; mediaTypeErr error
+	bio          string
+	bioErr       error
+	mediaType    *mime.MediaType
+	mediaTypeErr error
 
-	joined time.Time; joinedErr error
+	joined    time.Time
+	joinedErr error
 
-	pfp *Link; pfpErr error
-	banner *Link; bannerErr error
+	pfp       *Link
+	pfpErr    error
+	banner    *Link
+	bannerErr error
 
-	posts *Collection; postsErr error
+	posts    *Collection
+	postsErr error
 }
 
 func NewActor(input any, source *url.URL) (*Actor, error) {
 	o, id, err := client.FetchUnknown(input, source)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return NewActorFromObject(o, id)
 }
 
@@ -64,7 +74,7 @@ func NewActorFromObject(o object.Object, id *url.URL) (*Actor, error) {
 
 	a.pfp, a.pfpErr = getBestLink(o, "icon", "image")
 	a.banner, a.bannerErr = getBestLink(o, "image", "image")
-	
+
 	a.posts, a.postsErr = getCollection(o, "outbox", a.id)
 	return a, nil
 }
@@ -98,7 +108,9 @@ func (a *Actor) Name() string {
 	}
 
 	if a.id != nil && !errors.Is(a.handleErr, object.ErrKeyNotPresent) {
-		if output != "" { output += " " }
+		if output != "" {
+			output += " "
+		}
 		if a.handleErr != nil {
 			output += style.Problem(a.handleErr)
 		} else {
@@ -107,7 +119,9 @@ func (a *Actor) Name() string {
 	}
 
 	if a.kind != "Person" {
-		if output != "" { output += " " }
+		if output != "" {
+			output += " "
+		}
 		output += "(" + strings.ToLower(a.kind) + ")"
 	} else if output == "" {
 		output = strings.ToLower(a.kind)

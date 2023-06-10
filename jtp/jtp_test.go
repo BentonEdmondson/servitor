@@ -1,9 +1,9 @@
 package jtp
 
 import (
-	"testing"
 	"mimicry/util"
 	"net/url"
+	"testing"
 )
 
 func TestStatusLineNoInfo(t *testing.T) {

@@ -1,9 +1,9 @@
 package gemtext
 
 import (
-	"testing"
 	"mimicry/style"
 	"mimicry/util"
+	"testing"
 )
 
 func TestBasic(t *testing.T) {

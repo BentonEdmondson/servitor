@@ -1,9 +1,9 @@
 package hypertext
 
 import (
-	"testing"
 	"mimicry/style"
 	"mimicry/util"
+	"testing"
 )
 
 func TestMergeText(t *testing.T) {
@@ -111,7 +111,7 @@ func TestNestedBlocks(t *testing.T) {
 <p> </p>
 
 <p><img src="https://i.snap.as/P8qpdMbM.jpg" alt=""/></p>`
-	output, err := Render(input, 50)	
+	output, err := Render(input, 50)
 	if err != nil {
 		panic(err)
 	}
@@ -123,7 +123,7 @@ func TestNestedBlocks(t *testing.T) {
 
 func TestAdjacentLists(t *testing.T) {
 	input := `<ul><li>top list</li></ul><ul><li>bottom list</li></ul>`
-	output, err := Render(input, 50)	
+	output, err := Render(input, 50)
 	if err != nil {
 		panic(err)
 	}
@@ -134,22 +134,22 @@ func TestAdjacentLists(t *testing.T) {
 
 func TestNestedLists(t *testing.T) {
 	input := `<ul><li>top list<ul><li>nested</li></ul></li></ul>`
-	output, err := Render(input, 50)	
+	output, err := Render(input, 50)
 	if err != nil {
 		panic(err)
 	}
 	expected := style.Bullet("top list\n" + style.Bullet("nested"))
-		
+
 	util.AssertEqual(expected, output, t)
 }
 
 func TestBlockInList(t *testing.T) {
 	input := `<ul><li>top list<p><ul><li>paragraph</li></ul></p></li></ul>`
-	output, err := Render(input, 50)	
+	output, err := Render(input, 50)
 	if err != nil {
 		panic(err)
 	}
 	expected := style.Bullet("top list\n\n" + style.Bullet("paragraph"))
-		
+
 	util.AssertEqual(expected, output, t)
 }

@@ -1,54 +1,56 @@
 package pub
 
 import (
-	"net/url"
-	"strings"
-	"time"
-	"mimicry/style"
-	"mimicry/ansi"
-	"mimicry/object"
 	"errors"
-	"mimicry/client"
 	"fmt"
 	"golang.org/x/exp/slices"
+	"mimicry/ansi"
+	"mimicry/client"
 	"mimicry/mime"
+	"mimicry/object"
 	"mimicry/render"
+	"mimicry/style"
+	"net/url"
+	"strings"
 	"sync"
+	"time"
 )
 
 type Post struct {
 	kind string
-	id *url.URL
+	id   *url.URL
 
-	title string
-	titleErr error
-	body string
-	bodyErr error
-	mediaType *mime.MediaType
+	title        string
+	titleErr     error
+	body         string
+	bodyErr      error
+	mediaType    *mime.MediaType
 	mediaTypeErr error
-	link *Link
-	linkErr error
-	created time.Time
-	createdErr error
-	edited time.Time
-	editedErr error
-	parent any
-	parentErr error
+	link         *Link
+	linkErr      error
+	created      time.Time
+	createdErr   error
+	edited       time.Time
+	editedErr    error
+	parent       any
+	parentErr    error
 
 	// just as body dies completely if members die,
 	// attachments dies completely if any member dies
-	attachments []*Link
+	attachments    []*Link
 	attachmentsErr error
 
-	creators []TangibleWithName
-	recipients []TangibleWithName
-	comments *Collection
+	creators    []TangibleWithName
+	recipients  []TangibleWithName
+	comments    *Collection
 	commentsErr error
 }
 
 func NewPost(input any, source *url.URL) (*Post, error) {
 	o, id, err := client.FetchUnknown(input, source)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return NewPostFromObject(o, id)
 }
 
@@ -73,7 +75,7 @@ func NewPostFromObject(o object.Object, id *url.URL) (*Post, error) {
 	p.created, p.createdErr = o.GetTime("published")
 	p.edited, p.editedErr = o.GetTime("updated")
 	p.parent, p.parentErr = o.GetAny("inReplyTo")
-	
+
 	if p.kind == "Image" || p.kind == "Audio" || p.kind == "Video" {
 		p.link, p.linkErr = getBestLinkShorthand(o, "url", strings.ToLower(p.kind))
 	} else {
@@ -82,9 +84,9 @@ func NewPostFromObject(o object.Object, id *url.URL) (*Post, error) {
 
 	var wg sync.WaitGroup
 	wg.Add(4)
-	go func() {p.creators = getActors(o, "attributedTo", p.id); wg.Done()}()
-	go func() {p.recipients = getActors(o, "audience", p.id); wg.Done()}()
-	go func() {p.attachments, p.attachmentsErr = getLinks(o, "attachment"); wg.Done()}()
+	go func() { p.creators = getActors(o, "attributedTo", p.id); wg.Done() }()
+	go func() { p.recipients = getActors(o, "audience", p.id); wg.Done() }()
+	go func() { p.attachments, p.attachmentsErr = getLinks(o, "attachment"); wg.Done() }()
 	go func() {
 		p.comments, p.commentsErr = getCollection(o, "replies", p.id)
 		if errors.Is(p.commentsErr, object.ErrKeyNotPresent) {
@@ -96,7 +98,7 @@ func NewPostFromObject(o object.Object, id *url.URL) (*Post, error) {
 	return p, nil
 }
 
-func (p *Post) Kind() (string) {
+func (p *Post) Kind() string {
 	return p.kind
 }
 
@@ -151,7 +153,7 @@ func (p *Post) header(width int) string {
 		output += " by "
 		for i, creator := range p.creators {
 			output += style.Color(creator.Name())
-			if i != len(p.creators) - 1 {
+			if i != len(p.creators)-1 {
 				output += ", "
 			}
 		}
@@ -160,7 +162,7 @@ func (p *Post) header(width int) string {
 		output += " to "
 		for i, recipient := range p.recipients {
 			output += style.Color(recipient.Name())
-			if i != len(p.recipients) - 1 {
+			if i != len(p.recipients)-1 {
 				output += ", "
 			}
 		}
@@ -210,7 +212,9 @@ func (p *Post) supplement(width int) (string, bool) {
 
 	output := ""
 	for _, attachment := range p.attachments {
-		if output != "" { output += "\n" }
+		if output != "" {
+			output += "\n"
+		}
 		alt, err := attachment.Alt()
 		if err != nil {
 			output += style.Problem(err)
@@ -247,7 +251,7 @@ func (p Post) String(width int) string {
 	if attachments, present := p.supplement(width - 4); present {
 		output += "\n\n" + ansi.Indent(attachments, "  ", true)
 	}
-	
+
 	output += "\n\n" + p.footer(width)
 
 	return output
@@ -258,7 +262,7 @@ func (p *Post) Preview(width int) string {
 
 	if body, present := p.center(width); present {
 		if attachments, present := p.supplement(width); present {
-			output += "\n" + ansi.Snip(body + "\n" + attachments, width, 4, style.Color("\u2026"))
+			output += "\n" + ansi.Snip(body+"\n"+attachments, width, 4, style.Color("\u2026"))
 		} else {
 			output += "\n" + ansi.Snip(body, width, 4, style.Color("\u2026"))
 		}

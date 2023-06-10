@@ -1,26 +1,26 @@
 package mime
 
 import (
-	"regexp"
 	"errors"
+	"regexp"
 )
 
 type MediaType struct {
-	Essence string
+	Essence   string
 	Supertype string
-	Subtype string
+	Subtype   string
 }
 
 /*
-	See: https://httpwg.org/specs/rfc9110.html#media.type
+See: https://httpwg.org/specs/rfc9110.html#media.type
 */
 var re = regexp.MustCompile(`(?s)^(([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)/([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)).*$`)
 
 func Default() *MediaType {
-	return &MediaType {
-		Essence: "text/html",
+	return &MediaType{
+		Essence:   "text/html",
 		Supertype: "text",
-		Subtype: "html",
+		Subtype:   "html",
 	}
 }
 
@@ -32,15 +32,17 @@ func Parse(input string) (*MediaType, error) {
 	}
 
 	return &MediaType{
-		Essence: matches[1],
+		Essence:   matches[1],
 		Supertype: matches[2],
-		Subtype: matches[3],
+		Subtype:   matches[3],
 	}, nil
 }
 
 func (m *MediaType) Update(input string) error {
 	parsed, err := Parse(input)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	*m = *parsed
 	return nil
 }

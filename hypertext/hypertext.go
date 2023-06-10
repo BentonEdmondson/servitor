@@ -1,13 +1,13 @@
 package hypertext
 
 import (
+	"errors"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
-	"strings"
-	"regexp"
-	"mimicry/style"
-	"errors"
 	"mimicry/ansi"
+	"mimicry/style"
+	"regexp"
+	"strings"
 )
 
 // TODO: create a `bulletedList` function for all situations where
@@ -15,15 +15,18 @@ import (
 // and note that that section is different. (This will include one for
 // headers)
 
-// TODO: blocks need to be trimmed on the inside and newlined on 
+// TODO: blocks need to be trimmed on the inside and newlined on
 // the outside
 
-/* Terminal codes and control characters should already be escaped
-   by this point */
+/*
+Terminal codes and control characters should already be escaped
+
+	by this point
+*/
 func Render(text string, width int) (string, error) {
 	nodes, err := html.ParseFragment(strings.NewReader(text), &html.Node{
-		Type: html.ElementNode,
-		Data: "body",
+		Type:     html.ElementNode,
+		Data:     "body",
 		DataAtom: atom.Body,
 	})
 	if err != nil {
@@ -50,18 +53,19 @@ func renderList(nodes []*html.Node, width int) (string, error) {
 	return output, nil
 }
 
-/* 	Merges text according to the following rules:
-	1. Extract trailing whitespace from lhs and
-	   leading whitespace from rhs and concat them.
-	2. Append the two sides in the following way,
-	   depending on the extracted whitespace:
-	   	- If it is empty, append the sides
-		- Else, if it contains 0 newlines, append
-		  the sides with a single space between.
-		- Else, if it contains 1 newline, append
-		  the sides with a single newline between.
-		- Else, append the sides with 2 newlines
-		  between.
+/*
+		Merges text according to the following rules:
+	 1. Extract trailing whitespace from lhs and
+	    leading whitespace from rhs and concat them.
+	 2. Append the two sides in the following way,
+	    depending on the extracted whitespace:
+	    - If it is empty, append the sides
+	    - Else, if it contains 0 newlines, append
+	    the sides with a single space between.
+	    - Else, if it contains 1 newline, append
+	    the sides with a single newline between.
+	    - Else, append the sides with 2 newlines
+	    between.
 */
 func mergeText(lhs string, rhs string) string {
 	trimRight := regexp.MustCompile(`(?s)^(.*?)([ \n]*)$`)
@@ -79,8 +83,10 @@ func mergeText(lhs string, rhs string) string {
 	}
 
 	switch strings.Count(whitespace, "\n") {
-	case 0: return lhsTrimmed + " " + rhsTrimmed
-	case 1: return lhsTrimmed + "\n" + rhsTrimmed
+	case 0:
+		return lhsTrimmed + " " + rhsTrimmed
+	case 1:
+		return lhsTrimmed + "\n" + rhsTrimmed
 	}
 
 	return lhsTrimmed + "\n\n" + rhsTrimmed
@@ -127,18 +133,18 @@ func renderNode(node *html.Node, width int, preserveWhitespace bool) (string, er
 	case "p", "div":
 		return block(content), nil
 	case "pre":
-		content, err := renderChildren(node, width - 2, true)
+		content, err := renderChildren(node, width-2, true)
 		if err != nil {
 			return "", err
 		}
 		wrapped := situationalWrap(content, width, true)
 		return block(style.CodeBlock(wrapped)), err
 	case "blockquote":
-		content, err := renderChildren(node, width - 1, preserveWhitespace)
+		content, err := renderChildren(node, width-1, preserveWhitespace)
 		if err != nil {
 			return "", err
 		}
-		wrapped := situationalWrap(content, width - 1, preserveWhitespace)
+		wrapped := situationalWrap(content, width-1, preserveWhitespace)
 		// TODO: this text wrap is ugly
 		return block(style.QuoteBlock(strings.Trim(wrapped, " \n"))), nil
 	case "ul":
@@ -148,46 +154,46 @@ func renderNode(node *html.Node, width int, preserveWhitespace bool) (string, er
 	// 	return numberedList(node), nil
 
 	case "h1":
-		content, err := renderChildren(node, width - 2, preserveWhitespace)
+		content, err := renderChildren(node, width-2, preserveWhitespace)
 		if err != nil {
 			return "", err
 		}
-		wrapped := situationalWrap(content, width - 2, preserveWhitespace)
+		wrapped := situationalWrap(content, width-2, preserveWhitespace)
 		return block(style.Header(wrapped, 1)), nil
 	case "h2":
-		content, err := renderChildren(node, width - 3, preserveWhitespace)
+		content, err := renderChildren(node, width-3, preserveWhitespace)
 		if err != nil {
 			return "", err
 		}
-		wrapped := situationalWrap(content, width - 3, preserveWhitespace)
+		wrapped := situationalWrap(content, width-3, preserveWhitespace)
 		return block(style.Header(wrapped, 2)), nil
 	case "h3":
-		content, err := renderChildren(node, width - 4, preserveWhitespace)
+		content, err := renderChildren(node, width-4, preserveWhitespace)
 		if err != nil {
 			return "", err
 		}
-		wrapped := situationalWrap(content, width - 4, preserveWhitespace)
+		wrapped := situationalWrap(content, width-4, preserveWhitespace)
 		return block(style.Header(wrapped, 3)), nil
 	case "h4":
-		content, err := renderChildren(node, width - 5, preserveWhitespace)
+		content, err := renderChildren(node, width-5, preserveWhitespace)
 		if err != nil {
 			return "", err
 		}
-		wrapped := situationalWrap(content, width - 5, preserveWhitespace)
+		wrapped := situationalWrap(content, width-5, preserveWhitespace)
 		return block(style.Header(wrapped, 4)), nil
 	case "h5":
-		content, err := renderChildren(node, width - 6, preserveWhitespace)
+		content, err := renderChildren(node, width-6, preserveWhitespace)
 		if err != nil {
 			return "", err
 		}
-		wrapped := situationalWrap(content, width - 6, preserveWhitespace)
+		wrapped := situationalWrap(content, width-6, preserveWhitespace)
 		return block(style.Header(wrapped, 5)), nil
 	case "h6":
-		content, err := renderChildren(node, width - 7, preserveWhitespace)
+		content, err := renderChildren(node, width-7, preserveWhitespace)
 		if err != nil {
 			return "", err
 		}
-		wrapped := situationalWrap(content, width - 7, preserveWhitespace)
+		wrapped := situationalWrap(content, width-7, preserveWhitespace)
 		return block(style.Header(wrapped, 6)), nil
 
 	case "hr":
@@ -203,7 +209,7 @@ func renderNode(node *html.Node, width int, preserveWhitespace bool) (string, er
 		if text == "" {
 			return "", errors.New(node.Data + " tag is missing both `alt` and `src` attributes")
 		}
-		wrapped := situationalWrap(text, width - 2, preserveWhitespace)
+		wrapped := situationalWrap(text, width-2, preserveWhitespace)
 		return block(style.LinkBlock(wrapped)), nil
 	}
 
@@ -237,11 +243,11 @@ func bulletedList(node *html.Node, width int, preserveWhitespace bool) (string, 
 			continue
 		}
 
-		result, err := renderNode(current, width - 2, preserveWhitespace)
+		result, err := renderNode(current, width-2, preserveWhitespace)
 		if err != nil {
 			return "", err
 		}
-		wrapped := situationalWrap(result, width - 2, preserveWhitespace)
+		wrapped := situationalWrap(result, width-2, preserveWhitespace)
 		output += "\n" + style.Bullet(wrapped)
 	}
 

@@ -1,10 +1,10 @@
 package plaintext
 
 import (
-	"regexp"
-	"mimicry/style"
-	"strings"
 	"mimicry/ansi"
+	"mimicry/style"
+	"regexp"
+	"strings"
 )
 
 func Render(text string, width int) (string, error) {

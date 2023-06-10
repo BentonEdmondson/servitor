@@ -1,18 +1,18 @@
 package feed
 
 import (
-	"testing"
-	"mimicry/pub"
 	"mimicry/object"
+	"mimicry/pub"
+	"testing"
 )
 
-var post1, _ = pub.NewPostFromObject(object.Object {
-	"type": "Note",
+var post1, _ = pub.NewPostFromObject(object.Object{
+	"type":    "Note",
 	"content": "Hello!",
 }, nil)
 
-var post2, _ = pub.NewPostFromObject(object.Object {
-	"type": "Video",
+var post2, _ = pub.NewPostFromObject(object.Object{
+	"type":    "Video",
 	"content": "Goodbye!",
 }, nil)
 
@@ -31,10 +31,10 @@ func TestCreateCreateAndAppend(t *testing.T) {
 		t.Fatalf("Posts differed after create centerless, is %#v but should be %#v", shouldBePost1, post1)
 	}
 	defer func() {
-        if recover() == nil {
-            t.Fatalf("After create centerless, Get(0) should have panicked but did not")
-        }
-    }()
+		if recover() == nil {
+			t.Fatalf("After create centerless, Get(0) should have panicked but did not")
+		}
+	}()
 	feed.Get(0)
 }
 

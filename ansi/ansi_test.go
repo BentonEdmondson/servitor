@@ -1,18 +1,18 @@
 package ansi
 
 import (
-	"testing"
-	"mimicry/util"
 	"fmt"
+	"mimicry/util"
+	"testing"
 )
 
 func TestWrap(t *testing.T) {
 	// These test were pulled and modified from:
 	// https://github.com/muesli/reflow/blob/d4603be2c4a9017b4cf38856841116ffe0f04c59/wordwrap/wordwrap_test.go
 	tests := []struct {
-		Input        string
-		Expected     string
-		Limit        int
+		Input    string
+		Expected string
+		Limit    int
 	}{
 		// Nothing to wrap here, should pass through:
 		{
@@ -136,10 +136,10 @@ func TestSnip(t *testing.T) {
 	// These test were pulled and modified from:
 	// https://github.com/muesli/reflow/blob/d4603be2c4a9017b4cf38856841116ffe0f04c59/wordwrap/wordwrap_test.go
 	tests := []struct {
-		Input string
+		Input    string
 		Expected string
-		Height int
-		Width int
+		Height   int
+		Width    int
 	}{
 		// Restrict lines down:
 		{
@@ -181,16 +181,16 @@ func TestSnip(t *testing.T) {
 	for _, test := range tests {
 		output := Snip(test.Input, test.Width, test.Height, "…")
 		util.AssertEqual(test.Expected, output, t)
-	}	
+	}
 }
 
 func TestCenterVertically(t *testing.T) {
 	tests := []struct {
-		prefix string
+		prefix   string
 		centered string
-		suffix string
-		height uint
-		output string
+		suffix   string
+		height   uint
+		output   string
 	}{
 		// normal case
 		{
