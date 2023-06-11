@@ -286,7 +286,7 @@ func Height(text string) uint {
 func CenterVertically(prefix, centered, suffix string, height uint) string {
 	prefixHeight, centeredHeight, suffixHeight := Height(prefix), Height(centered), Height(suffix)
 	if height < centeredHeight {
-		panic("screen is too small to vertically center text within it")
+		return strings.Join(strings.Split(centered, "\n")[:height], "\n")
 	}
 	totalBufferSize := height - centeredHeight
 	topBufferSize := totalBufferSize / 2

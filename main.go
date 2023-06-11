@@ -56,7 +56,7 @@ func main() {
 
 	go func() {
 		for {
-			time.Sleep(1 * time.Second)
+			time.Sleep(500 * time.Millisecond)
 			width, height, err := term.GetSize(int(os.Stdin.Fd()))
 			if err != nil {
 				panic(err)

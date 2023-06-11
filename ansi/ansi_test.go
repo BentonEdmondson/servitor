@@ -254,6 +254,15 @@ func TestCenterVertically(t *testing.T) {
 			3,
 			"p1\nc1\n",
 		},
+
+		// center too big
+		{
+			"top",
+			"middle\nis\nbig",
+			"bottom",
+			2,
+			"middle\nis",
+		},
 	}
 
 	for i, test := range tests {
