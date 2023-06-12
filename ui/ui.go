@@ -9,22 +9,30 @@ import (
 	"mimicry/splicer"
 	"mimicry/style"
 	"sync"
+	"mimicry/history"
 )
 
-type State struct {
-	// TODO: the part stored in the history array is
-	// called page, page will be renamed to children
-	m *sync.Mutex
+/*
+	The public methods herein are threadsafe, the private methods
+	are not and need to be protected by State.m
+*/
 
+type Page struct {
 	feed  *feed.Feed
 	index int
 
 	frontier  pub.Tangible
 	loadingUp bool
 
-	page        pub.Container
+	children        pub.Container
 	basepoint   uint
 	loadingDown bool
+}
+
+type State struct {
+	m *sync.Mutex
+
+	h history.History[*Page]
 
 	width  int
 	height int
@@ -34,26 +42,26 @@ type State struct {
 }
 
 func (s *State) view() string {
-	if s.feed.IsEmpty() {
+	if s.h.IsEmpty() || s.h.Current().feed.IsEmpty() {
 		return ansi.CenterVertically("", style.Color("  Loading…"), "", uint(s.height))
 	}
 
 	var top, center, bottom string
-	for i := s.index - s.config.Context; i <= s.index+s.config.Context; i++ {
-		if !s.feed.Contains(i) {
+	for i := s.h.Current().index - s.config.Context; i <= s.h.Current().index+s.config.Context; i++ {
+		if !s.h.Current().feed.Contains(i) {
 			continue
 		}
 		var serialized string
 		if i == 0 {
-			serialized = s.feed.Get(i).String(s.width - 4)
+			serialized = s.h.Current().feed.Get(i).String(s.width - 4)
 		} else if i > 0 {
-			serialized = "→ " + ansi.Indent(s.feed.Get(i).Preview(s.width-4), "  ", false)
+			serialized = "→ " + ansi.Indent(s.h.Current().feed.Get(i).Preview(s.width-4), "  ", false)
 		} else {
-			serialized = s.feed.Get(i).Preview(s.width - 4)
+			serialized = s.h.Current().feed.Get(i).Preview(s.width - 4)
 		}
-		if i == s.index {
+		if i == s.h.Current().index {
 			center = ansi.Indent(serialized, "┃ ", true)
-		} else if i < s.index {
+		} else if i < s.h.Current().index {
 			if top != "" {
 				top += "\n"
 			}
@@ -65,13 +73,13 @@ func (s *State) view() string {
 			bottom += ansi.Indent("\n"+serialized, "  ", true)
 		}
 	}
-	if s.loadingUp {
+	if s.h.Current().loadingUp {
 		if top != "" {
 			top += "\n"
 		}
 		top = "  " + style.Color("Loading…") + "\n" + top
 	}
-	if s.loadingDown {
+	if s.h.Current().loadingDown {
 		if bottom != "" {
 			bottom += "\n"
 		}
@@ -81,59 +89,58 @@ func (s *State) view() string {
 }
 
 func (s *State) Update(input byte) {
+	s.m.Lock()
+	defer s.m.Unlock()
 	switch input {
 	case 'k': // up
-		s.m.Lock()
-		if s.feed.Contains(s.index - 1) {
-			s.index -= 1
+		if s.h.Current().feed.Contains(s.h.Current().index - 1) {
+			s.h.Current().index -= 1
 		}
-		s.loadSurroundings()
 		s.output(s.view())
-		s.m.Unlock()
+		s.loadSurroundings()
 	case 'j': // down
-		s.m.Lock()
-		if s.feed.Contains(s.index + 1) {
-			s.index += 1
+		if s.h.Current().feed.Contains(s.h.Current().index + 1) {
+			s.h.Current().index += 1
 		}
-		s.loadSurroundings()
 		s.output(s.view())
-		s.m.Unlock()
+		s.loadSurroundings()
 	case 'g': // return to OP
-		s.m.Lock()
-		if s.feed.Contains(0) {
-			s.index = 0
-			s.output(s.view())
+		if s.h.Current().feed.Contains(0) {
+			s.h.Current().index = 0
 		}
-		s.m.Unlock()
+		s.output(s.view())
+	case 'h': // back in history
+		s.h.Back()
+		s.output(s.view())
+	case 'l':
+		s.h.Forward()
+		s.output(s.view())
 	case ' ': // select
-		s.m.Lock()
-		s.switchTo(s.feed.Get(s.index))
-		s.m.Unlock()
+		s.switchTo(s.h.Current().feed.Get(s.h.Current().index))
+		s.output(s.view())
 	}
 	// TODO: the catchall down here will be to look at s.feed.Get(s.index).References()
 	// for urls to switch to
 }
 
 func (s *State) switchTo(item pub.Any) {
-	s.loadingUp = false
-	s.loadingDown = false
-	s.basepoint = 0
 	switch narrowed := item.(type) {
 	case pub.Tangible:
-		s.feed = feed.Create(narrowed)
-		s.index = 0
-		s.page = narrowed.Children()
-		s.frontier = narrowed
+		s.h.Add(&Page{
+			feed: feed.Create(narrowed),
+			children: narrowed.Children(),
+			frontier: narrowed,
+		})
 	case pub.Container:
-		s.feed = feed.CreateEmpty()
-		s.index = 1
-		s.page = narrowed
-		s.frontier = nil
+		s.h.Add(&Page{
+			feed: feed.CreateEmpty(),
+			children: narrowed,
+			index: 1,
+		})
 	default:
 		panic(fmt.Sprintf("unrecognized non-Tangible non-Container: %T", item))
 	}
 	s.loadSurroundings()
-	s.output(s.view())
 }
 
 func (s *State) SetWidthHeight(width int, height int) {
@@ -148,33 +155,31 @@ func (s *State) SetWidthHeight(width int, height int) {
 }
 
 func (s *State) loadSurroundings() {
-	var prior State = *s
-	if !s.loadingUp && !s.feed.Contains(s.index-s.config.Context) && s.frontier != nil {
-		s.loadingUp = true
+	page := s.h.Current()
+	context := s.config.Context
+	if !page.loadingUp && !page.feed.Contains(page.index-context) && page.frontier != nil {
+		page.loadingUp = true
 		go func() {
-			parents, newFrontier := prior.frontier.Parents(uint(prior.config.Context))
+			parents, newFrontier := page.frontier.Parents(uint(context))
 			s.m.Lock()
-			prior.feed.Prepend(parents)
-			if prior.feed == s.feed {
-				s.frontier = newFrontier
-				s.loadingUp = false
-				s.output(s.view())
-			}
+			page.feed.Prepend(parents)
+			page.frontier = newFrontier
+			page.loadingUp = false
+			s.output(s.view())
 			s.m.Unlock()
 		}()
 	}
-	if !s.loadingDown && !s.feed.Contains(s.index+s.config.Context) && s.page != nil {
-		s.loadingDown = true
+	if !page.loadingDown && !page.feed.Contains(page.index+context) && page.children != nil {
+		page.loadingDown = true
 		go func() {
-			children, newPage, newBasepoint := prior.page.Harvest(uint(prior.config.Context), prior.basepoint)
+			// TODO: need to do a new renaming, maybe upperFrontier, lowerFrontier
+			children, nextCollection, newBasepoint := page.children.Harvest(uint(context), page.basepoint)
 			s.m.Lock()
-			prior.feed.Append(children)
-			if prior.feed == s.feed {
-				s.page = newPage
-				s.basepoint = newBasepoint
-				s.loadingDown = false
-				s.output(s.view())
-			}
+			page.feed.Append(children)
+			page.children = nextCollection
+			page.basepoint = newBasepoint
+			page.loadingDown = false
+			s.output(s.view())
 			s.m.Unlock()
 		}()
 	}
@@ -188,6 +193,7 @@ func (s *State) Open(input string) {
 		result := pub.FetchUserInput(input)
 		s.m.Lock()
 		s.switchTo(result)
+		s.output(s.view())
 		s.m.Unlock()
 	}()
 }
@@ -201,14 +207,14 @@ func (s *State) Feed(input string) {
 		result := splicer.NewSplicer(inputs)
 		s.m.Lock()
 		s.switchTo(result)
+		s.output(s.view())
 		s.m.Unlock()
 	}()
 }
 
 func NewState(config *config.Config, width int, height int, output func(string)) *State {
 	s := &State{
-		feed:   feed.CreateEmpty(),
-		index:  0,
+		h: history.History[*Page]{},
 		config: config,
 		width:  width,
 		height: height,
