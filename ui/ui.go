@@ -55,7 +55,7 @@ func (s *State) view() string {
 		if i == 0 {
 			serialized = s.h.Current().feed.Get(i).String(s.width - 4)
 		} else if i > 0 {
-			serialized = "→ " + ansi.Indent(s.h.Current().feed.Get(i).Preview(s.width-4), "  ", false)
+			serialized = "→ " + ansi.Indent(s.h.Current().feed.Get(i).Preview(s.width-8), "  ", false)
 		} else {
 			serialized = s.h.Current().feed.Get(i).Preview(s.width - 4)
 		}

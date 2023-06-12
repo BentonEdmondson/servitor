@@ -285,7 +285,7 @@ func Height(text string) uint {
 
 func CenterVertically(prefix, centered, suffix string, height uint) string {
 	prefixHeight, centeredHeight, suffixHeight := Height(prefix), Height(centered), Height(suffix)
-	if height < centeredHeight {
+	if height <= centeredHeight {
 		return strings.Join(strings.Split(centered, "\n")[:height], "\n")
 	}
 	totalBufferSize := height - centeredHeight
