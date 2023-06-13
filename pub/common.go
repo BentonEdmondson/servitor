@@ -13,20 +13,15 @@ var (
 	ErrWrongType = errors.New("item is the wrong type")
 )
 
-type TangibleWithName interface {
-	Tangible
-	Name() string
-}
-
-func getActors(o object.Object, key string, source *url.URL) []TangibleWithName {
+func getActors(o object.Object, key string, source *url.URL) []Tangible {
 	list, err := o.GetList(key)
 	if errors.Is(err, object.ErrKeyNotPresent) {
-		return []TangibleWithName{}
+		return []Tangible{}
 	} else if err != nil {
-		return []TangibleWithName{NewFailure(err)}
+		return []Tangible{NewFailure(err)}
 	}
 
-	output := make([]TangibleWithName, len(list))
+	output := make([]Tangible, len(list))
 	var wg sync.WaitGroup
 	for i := range list {
 		wg.Add(1)

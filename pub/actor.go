@@ -196,7 +196,7 @@ func (a *Actor) String(width int) string {
 	return output
 }
 
-func (a Actor) Preview(width int) string {
+func (a *Actor) Preview(width int) string {
 	output := a.header(width)
 
 	// TODO this needs to be truncated

@@ -14,6 +14,7 @@ type Tangible interface {
 	Parents(quantity uint) ([]Tangible, Tangible)
 	Children() Container
 	Timestamp() time.Time
+	Name() string
 }
 
 type Container interface {

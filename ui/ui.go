@@ -96,35 +96,67 @@ func (s *State) Update(input byte) {
 		if s.h.Current().feed.Contains(s.h.Current().index - 1) {
 			s.h.Current().index -= 1
 		}
-		s.output(s.view())
 		s.loadSurroundings()
 	case 'j': // down
 		if s.h.Current().feed.Contains(s.h.Current().index + 1) {
 			s.h.Current().index += 1
 		}
-		s.output(s.view())
 		s.loadSurroundings()
 	case 'g': // return to OP
 		if s.h.Current().feed.Contains(0) {
 			s.h.Current().index = 0
 		}
-		s.output(s.view())
 	case 'h': // back in history
 		s.h.Back()
-		s.output(s.view())
-	case 'l':
+	case 'l': // forward in history
 		s.h.Forward()
-		s.output(s.view())
 	case ' ': // select
 		s.switchTo(s.h.Current().feed.Get(s.h.Current().index))
-		s.output(s.view())
+	case 'c': // get creator of post
+		unwrapped := s.h.Current().feed.Get(s.h.Current().index)
+		if activity, ok := unwrapped.(*pub.Activity); ok {
+			unwrapped = activity.Target()
+		}
+		if post, ok := unwrapped.(*pub.Post); ok {
+			creators := post.Creators()
+			s.switchTo(creators)
+		}
+	case 'r': // get recipient of post
+		unwrapped := s.h.Current().feed.Get(s.h.Current().index)
+		if activity, ok := unwrapped.(*pub.Activity); ok {
+			unwrapped = activity.Target()
+		}
+		if post, ok := unwrapped.(*pub.Post); ok {
+			recipients := post.Recipients()
+			s.switchTo(recipients)
+		}
+	case 'a': // get actor of activity
+		if activity, ok := s.h.Current().feed.Get(s.h.Current().index).(*pub.Activity); ok {
+			actor := activity.Actor()
+			s.switchTo(actor)
+		}
 	}
-	// TODO: the catchall down here will be to look at s.feed.Get(s.index).References()
-	// for urls to switch to
+	s.output(s.view())
 }
 
-func (s *State) switchTo(item pub.Any) {
+func (s *State) switchTo(item any) {
 	switch narrowed := item.(type) {
+	case []pub.Tangible:
+		if len(narrowed) == 0 {
+			return
+		}
+		if len(narrowed) == 1 {
+			s.h.Add(&Page{
+				feed: feed.Create(narrowed[0]),
+				children: narrowed[0].Children(),
+				frontier: narrowed[0],
+			})
+		} else {
+			s.h.Add(&Page{
+				feed: feed.CreateAndAppend(narrowed),
+				index: 1,
+			})
+		}
 	case pub.Tangible:
 		s.h.Add(&Page{
 			feed: feed.Create(narrowed),

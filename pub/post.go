@@ -40,8 +40,8 @@ type Post struct {
 	attachments    []*Link
 	attachmentsErr error
 
-	creators    []TangibleWithName
-	recipients  []TangibleWithName
+	creators    []Tangible
+	recipients  []Tangible
 	comments    *Collection
 	commentsErr error
 }
@@ -277,4 +277,19 @@ func (p *Post) Timestamp() time.Time {
 	} else {
 		return p.created
 	}
+}
+
+func (p *Post) Name() string {
+	if p.titleErr != nil {
+		return style.Problem(p.titleErr)
+	}
+	return p.title
+}
+
+func (p *Post) Creators() []Tangible {
+	return p.creators
+}
+
+func (p *Post) Recipients() []Tangible {
+	return p.recipients
 }

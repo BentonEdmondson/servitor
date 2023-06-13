@@ -125,3 +125,18 @@ func (a *Activity) Timestamp() time.Time {
 	}
 	return a.created
 }
+
+func (a *Activity) Name() string {
+	return a.target.Name()
+}
+
+func (a *Activity) Actor() Tangible {
+	if a.actorErr != nil {
+		return NewFailure(a.actorErr)
+	}
+	return a.actor
+}
+
+func (a *Activity) Target() Tangible {
+	return a.target
+}
