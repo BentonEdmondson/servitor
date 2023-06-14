@@ -171,7 +171,7 @@ func (p *Post) header(width int) string {
 	if p.createdErr != nil && !errors.Is(p.createdErr, object.ErrKeyNotPresent) {
 		output += " at " + style.Problem(p.createdErr)
 	} else {
-		output += " at " + style.Color(time.Since(p.created).Round(time.Minute).String())
+		output += " • " + style.Color(ago(p.created))
 	}
 
 	return ansi.Wrap(output, width)

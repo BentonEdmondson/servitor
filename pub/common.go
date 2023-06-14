@@ -7,6 +7,7 @@ import (
 	"mimicry/object"
 	"net/url"
 	"sync"
+	"time"
 )
 
 var (
@@ -206,4 +207,28 @@ func getBestLink(o object.Object, key string, supertype string) (*Link, error) {
 		return nil, err
 	}
 	return SelectBestLink(links, supertype)
+}
+
+func ago(t time.Time) string {
+	duration := time.Since(t)
+
+	if days := int(duration.Hours()/24); days > 1 {
+		return fmt.Sprintf("%d days ago", int(days))
+	} else if days == 1 {
+		return "1 day ago"
+	}
+
+	if hours := int(duration.Hours()); hours > 1 {
+		return fmt.Sprintf("%d hours ago", int(hours))
+	} else if hours == 1 {
+		return "1 hour ago"
+	}
+
+	if minutes := int(duration.Minutes()); minutes > 1 {
+		return fmt.Sprintf("%d minutes ago", int(minutes))
+	} else if minutes == 1 {
+		return "1 minute ago"
+	}
+
+	return "seconds ago"
 }
