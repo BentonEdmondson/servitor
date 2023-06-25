@@ -307,6 +307,35 @@ func CenterVertically(prefix, centered, suffix string, height uint) string {
 	return prefix + "\n" + centered + "\n" + suffix
 }
 
+func ReplaceLastLine(original, replacement string) string {
+	if strings.Contains(replacement, "\n") {
+		panic("new version of last line cannot contain a newline")
+	}
+
+	var lastIndex = strings.LastIndex(original, "\n")
+	if lastIndex == -1 {
+		lastIndex = 0
+	}
+	return original[:lastIndex] + "\n" + replacement
+}
+
+func SetLength(text string, length int, ellipsis string) string {
+	if length == 0 {
+		return ""
+	}
+	if len(text) > length {
+		return text[:length - 1] + ellipsis
+	}
+	if len(text) < length {
+		return text + strings.Repeat(" ", length - len(text))
+	}
+	return text
+}
+
+func Squash(text string) string {
+	return strings.ReplaceAll(text, "\n", " ")
+}
+
 /*
 	TODO:
 		add `Scrub` function that removes all ANSI codes from text
