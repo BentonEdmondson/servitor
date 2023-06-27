@@ -10,12 +10,32 @@ import (
 	"mimicry/style"
 	"sync"
 	"mimicry/history"
+	"os/exec"
+	"mimicry/mime"
+	"strings"
+	"strconv"
 )
 
 /*
 	The public methods herein are threadsafe, the private methods
 	are not and need to be protected by State.m
 */
+
+/* Modes */
+const (
+	loading = iota
+	normal
+	command
+	selection
+	opening
+	problem
+)
+
+const (
+	enterKey byte = '\r'
+	escapeKey byte = 27
+	backspaceKey byte = 127
+)
 
 type Page struct {
 	feed  *feed.Feed
@@ -39,10 +59,13 @@ type State struct {
 	output func(string)
 
 	config *config.Config
+
+	mode int
+	buffer string
 }
 
 func (s *State) view() string {
-	if s.h.IsEmpty() || s.h.Current().feed.IsEmpty() {
+	if s.mode == loading {
 		return ansi.CenterVertically("", style.Color("  Loading…"), "", uint(s.height))
 	}
 
@@ -85,13 +108,127 @@ func (s *State) view() string {
 		}
 		bottom += "\n  " + style.Color("Loading…")
 	}
-	return ansi.CenterVertically(top, center, bottom, uint(s.height))
+	output := ansi.CenterVertically(top, center, bottom, uint(s.height))
+	
+	var footer string
+	switch s.mode {
+	case normal:
+		break
+	case selection:
+		footer = "Selecting " + s.buffer + " (press . to open internally, enter to open externally)"
+	case command:
+		footer = ":" + s.buffer
+	case opening:
+		footer = "Opening " + s.buffer + "\u2026"
+	case problem:
+		footer = s.buffer
+	default:
+		panic("encountered unrecognized mode")
+	}
+	if footer != "" {
+		output = ansi.ReplaceLastLine(output, style.Highlight(ansi.SetLength(footer, s.width, "\u2026")))
+	}
+
+	return output
 }
 
 func (s *State) Update(input byte) {
 	s.m.Lock()
 	defer s.m.Unlock()
+
+	if s.mode == loading {
+		panic("inputs should not come through while loading, as all loading functions block the UI thread")
+	}
+
+	if input == escapeKey {
+		s.buffer = ""
+		s.mode = normal
+		s.output(s.view())
+		return
+	}
+
+	if input == backspaceKey {
+		if len(s.buffer) == 0 {
+			s.mode = normal
+			s.output(s.view())
+			return
+		}
+		s.buffer = s.buffer[:len(s.buffer)-1]
+		if s.buffer == "" && s.mode == selection {
+			s.mode = normal
+		}
+		s.output(s.view())
+		return
+	}
+
+	if s.mode == command {
+		if input == enterKey {
+			if args := strings.SplitN(s.buffer, " ", 2); len(args) == 2 {
+				err := s.subcommand(args[0], args[1])
+				if err != nil {
+					s.buffer = "Failed to run command: " + ansi.Squash(err.Error())
+					s.mode = problem
+					s.output(s.view())
+					s.buffer = ""
+					s.mode = normal
+				}
+			} else {
+				s.buffer = ""
+				s.mode = normal
+			}
+			return
+		}
+		s.buffer += string(input)
+		s.output(s.view())
+		return
+	}
+
+	if input == ':' {
+		s.buffer = ""
+		s.mode = command
+		s.output(s.view())
+		return
+	}
+
+	if input >= '0' && input <= '9' {
+		if s.mode != selection {
+			s.buffer = ""
+		}
+		s.buffer += string(input)
+		s.mode = selection
+		s.output(s.view())
+		return
+	}
+
+	if s.mode == selection {
+		if input == '.' || input == enterKey {
+			number, err := strconv.Atoi(s.buffer)
+			if err != nil {
+				panic("buffer had a non-number while in selection mode")
+			}
+			link, mediaType, present := s.h.Current().feed.Get(s.h.Current().index).SelectLink(number)
+			if !present {
+				s.buffer = ""
+				s.mode = normal
+				s.output(s.view())
+				return
+			}
+			if input == '.' {
+				s.openInternally(link)
+			}
+			if input == enterKey {
+				s.openExternally(link, mediaType)
+			}
+			return
+		}
+		/* At this point we know input is a non-number, non-., non-enter */
+		s.mode = normal
+		s.buffer = ""
+	}
+
+	/* At this point we know we are in normal mode */
 	switch input {
+	// TODO: make feed stateful so all this logic is nicer. Functions will be MoveUp, MoveDown, MoveToCenter
 	case 'k': // up
 		if s.h.Current().feed.Contains(s.h.Current().index - 1) {
 			s.h.Current().index -= 1
@@ -135,6 +272,28 @@ func (s *State) Update(input byte) {
 			actor := activity.Actor()
 			s.switchTo(actor)
 		}
+	case 'o':
+		unwrapped := s.h.Current().feed.Get(s.h.Current().index)
+		if activity, ok := unwrapped.(*pub.Activity); ok {
+			unwrapped = activity.Target()
+		}
+		if post, ok := unwrapped.(*pub.Post); ok {
+			if link, mediaType, present := post.Media(); present {
+				s.openExternally(link, mediaType)
+			}
+		}
+	case 'p':
+		if actor, ok := s.h.Current().feed.Get(s.h.Current().index).(*pub.Actor); ok {
+			if link, mediaType, present := actor.ProfilePic(); present {
+				s.openExternally(link, mediaType)
+			}
+		}
+	case 'b':
+		if actor, ok := s.h.Current().feed.Get(s.h.Current().index).(*pub.Actor); ok {
+			if link, mediaType, present := actor.Banner(); present {
+				s.openExternally(link, mediaType)
+			}
+		}
 	}
 	s.output(s.view())
 }
@@ -164,14 +323,21 @@ func (s *State) switchTo(item any) {
 			frontier: narrowed,
 		})
 	case pub.Container:
+		s.mode = loading
+		s.buffer = ""
+		s.output(s.view())
+		children, nextCollection, newBasepoint := narrowed.Harvest(uint(s.config.Context), 0)
 		s.h.Add(&Page{
-			feed: feed.CreateEmpty(),
-			children: narrowed,
+			basepoint: newBasepoint,
+			children: nextCollection,
+			feed: feed.CreateAndAppend(children),
 			index: 1,
 		})
 	default:
 		panic(fmt.Sprintf("unrecognized non-Tangible non-Container: %T", item))
 	}
+	s.mode = normal
+	s.buffer = ""
 	s.loadSurroundings()
 }
 
@@ -217,31 +383,40 @@ func (s *State) loadSurroundings() {
 	}
 }
 
-func (s *State) Open(input string) {
-	go func() {
-		s.m.Lock()
-		s.output(s.view())
-		s.m.Unlock()
-		result := pub.FetchUserInput(input)
-		s.m.Lock()
-		s.switchTo(result)
-		s.output(s.view())
-		s.m.Unlock()
-	}()
+func (s *State) openUserInput(input string) {
+	s.mode = loading
+	s.buffer = ""
+	s.output(s.view())
+	result := pub.FetchUserInput(input)
+	s.switchTo(result)
+	s.output(s.view())
 }
 
-func (s *State) Feed(input string) {
-	go func() {
-		s.m.Lock()
+func (s *State) openInternally(input string) {
+	s.mode = loading
+	s.buffer = ""
+	s.output(s.view())
+	result := pub.New(input, nil)
+	s.switchTo(result)
+	s.output(s.view())
+}
+
+func (s *State) openFeed(input string) {
+	inputs, present := s.config.Feeds[input]
+	if !present {
+		s.mode = problem
+		s.buffer = "Failed to open feed: " + input + " is not a known feed"
 		s.output(s.view())
-		inputs := s.config.Feeds[input]
-		s.m.Unlock()
-		result := splicer.NewSplicer(inputs)
-		s.m.Lock()
-		s.switchTo(result)
-		s.output(s.view())
-		s.m.Unlock()
-	}()
+		s.mode = normal
+		s.buffer = ""
+		return
+	}
+	s.mode = loading
+	s.buffer = ""
+	s.output(s.view())
+	result := splicer.NewSplicer(inputs)
+	s.switchTo(result)
+	s.output(s.view())
 }
 
 func NewState(config *config.Config, width int, height int, output func(string)) *State {
@@ -252,6 +427,81 @@ func NewState(config *config.Config, width int, height int, output func(string))
 		height: height,
 		output: output,
 		m:      &sync.Mutex{},
+		mode:   loading,
 	}
 	return s
+}
+
+func (s *State) Subcommand(name, argument string) error {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return s.subcommand(name, argument)
+}
+
+func (s *State) subcommand(name, argument string) error {
+	switch name {
+	case "open":
+		s.openUserInput(argument)
+	case "feed":
+		s.openFeed(argument)
+	default:
+		return fmt.Errorf("unrecognized subcommand: %s", name)
+	}
+	return nil
+}
+
+func (s *State) openExternally(link string, mediaType *mime.MediaType) {
+	s.mode = opening
+	s.buffer = link
+	s.output(s.view())
+
+	command := make([]string, len(s.config.MediaHook))
+	copy(command, s.config.MediaHook)
+
+	foundPercentU := false
+	for i, field := range command {
+		if i == 0 {
+			continue
+		}
+		switch field {
+		case "%u":
+			command[i] = link
+			foundPercentU = true
+		case "%m":
+			command[i] = mediaType.Essence
+		case "%s":
+			command[i] = mediaType.Subtype
+		case "%t":
+			command[i] = mediaType.Supertype
+		}
+	}
+
+	cmd := exec.Command(command[0], command[1:]...)
+	if !foundPercentU {
+		cmd.Stdin = strings.NewReader(link)
+	}
+
+	go func() {
+		err := cmd.Run()
+
+		s.m.Lock()
+		defer s.m.Unlock()
+		
+		if s.mode != opening {
+			return
+		}
+
+		if err != nil {
+			s.mode = problem
+			s.buffer = "Failed to open link: " + ansi.Squash(err.Error())
+			s.output(s.view())
+			s.mode = normal
+			s.buffer = ""
+			return
+		}
+	
+		s.mode = normal
+		s.buffer = ""
+		s.output(s.view())
+	}()
 }

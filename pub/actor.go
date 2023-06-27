@@ -6,13 +6,12 @@ import (
 	"golang.org/x/exp/slices"
 	"mimicry/ansi"
 	"mimicry/client"
-	"mimicry/mime"
 	"mimicry/object"
-	"mimicry/render"
 	"mimicry/style"
 	"net/url"
 	"strings"
 	"time"
+	"mimicry/mime"
 )
 
 type Actor struct {
@@ -24,10 +23,9 @@ type Actor struct {
 
 	id *url.URL
 
-	bio          string
+	bio          object.Markup
+	bioLinks	[]string
 	bioErr       error
-	mediaType    *mime.MediaType
-	mediaTypeErr error
 
 	joined    time.Time
 	joinedErr error
@@ -63,13 +61,9 @@ func NewActorFromObject(o object.Object, id *url.URL) (*Actor, error) {
 		return nil, fmt.Errorf("%w: %s is not an Actor", ErrWrongType, a.kind)
 	}
 
-	a.name, a.nameErr = o.GetNatural("name", "en")
+	a.name, a.nameErr = o.GetString("name")
 	a.handle, a.handleErr = o.GetString("preferredUsername")
-	a.bio, a.bioErr = o.GetNatural("summary", "en")
-	if a.bio == "" {
-		a.bioErr = object.ErrKeyNotPresent
-	}
-	a.mediaType, a.mediaTypeErr = o.GetMediaType("mediaType")
+	a.bio, a.bioLinks, a.bioErr = o.GetMarkup("summary", "mediaType")
 	a.joined, a.joinedErr = o.GetTime("published")
 
 	a.pfp, a.pfpErr = getBestLink(o, "icon", "image")
@@ -152,25 +146,13 @@ func (a *Actor) center(width int) (string, bool) {
 		return ansi.Wrap(style.Problem(a.bioErr), width), true
 	}
 
-	mediaType := a.mediaType
-	if errors.Is(a.mediaTypeErr, object.ErrKeyNotPresent) {
-		mediaType = mime.Default()
-	} else if a.mediaTypeErr != nil {
-		return ansi.Wrap(style.Problem(a.mediaTypeErr), width), true
-	}
-
-	rendered, err := render.Render(a.bio, mediaType.Essence, width)
-	if err != nil {
-		return style.Problem(err), true
-	}
+	rendered := a.bio.Render(width)
 	return rendered, true
 }
 
 func (a *Actor) footer(width int) (string, bool) {
-	if errors.Is(a.postsErr, object.ErrKeyNotPresent) {
+	if a.postsErr != nil {
 		return style.Problem(a.postsErr), true
-	} else if a.postsErr != nil {
-		return "", false
 	} else if quantity, err := a.posts.Size(); errors.Is(err, object.ErrKeyNotPresent) {
 		return "", false
 	} else if err != nil {
@@ -186,11 +168,11 @@ func (a *Actor) String(width int) string {
 	output := a.header(width)
 
 	if body, present := a.center(width - 4); present {
-		output += "\n\n" + ansi.Indent(body, "  ", true) + "\n"
+		output += "\n\n" + ansi.Indent(body, "  ", true)
 	}
 
 	if footer, present := a.footer(width); present {
-		output += "\n" + footer
+		output += "\n\n" + footer
 	}
 
 	return output
@@ -217,4 +199,28 @@ func (a *Actor) Timestamp() time.Time {
 	} else {
 		return a.joined
 	}
+}
+
+func (a *Actor) Banner() (string, *mime.MediaType, bool) {
+	if a.bannerErr != nil {
+		return "", nil, false
+	}
+
+	return a.banner.SelectWithDefaultMediaType(mime.UnknownSubtype("image"))
+}
+
+func (a *Actor) ProfilePic() (string, *mime.MediaType, bool) {
+	if a.pfpErr != nil {
+		return "", nil, false
+	}
+
+	return a.pfp.SelectWithDefaultMediaType(mime.UnknownSubtype("image"))
+}
+
+func (a *Actor) SelectLink(input int) (string, *mime.MediaType, bool) {
+	input -= 1
+	if len(a.bioLinks) <= input {
+		return "", nil, false
+	}
+	return a.bioLinks[input], mime.Unknown(), true
 }

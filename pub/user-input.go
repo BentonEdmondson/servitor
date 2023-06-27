@@ -11,7 +11,7 @@ func FetchUserInput(text string) Any {
 		if err != nil {
 			return NewFailure(err)
 		}
-		return NewTangible(link, nil)
+		return New(link, nil)
 	}
 
 	if strings.HasPrefix(text, "/") ||
@@ -21,8 +21,8 @@ func FetchUserInput(text string) Any {
 		if err != nil {
 			return NewFailure(err)
 		}
-		return NewTangible(object, nil)
+		return New(object, nil)
 	}
 
-	return NewTangible(text, nil)
+	return New(text, nil)
 }

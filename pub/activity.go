@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"sync"
 	"time"
+	"mimicry/mime"
 )
 
 type Activity struct {
@@ -115,11 +116,7 @@ func (a *Activity) Parents(quantity uint) ([]Tangible, Tangible) {
 
 func (a *Activity) Timestamp() time.Time {
 	if errors.Is(a.createdErr, object.ErrKeyNotPresent) {
-		if a.kind == "Create" {
-			return a.target.Timestamp()
-		} else {
-			return time.Time{}
-		}
+		return a.target.Timestamp()
 	} else if a.createdErr != nil {
 		return time.Time{}
 	}
@@ -139,4 +136,8 @@ func (a *Activity) Actor() Tangible {
 
 func (a *Activity) Target() Tangible {
 	return a.target
+}
+
+func (a *Activity) SelectLink(input int) (string, *mime.MediaType, bool) {
+	return a.target.SelectLink(input)
 }

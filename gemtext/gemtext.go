@@ -11,8 +11,21 @@ import (
 	https://gemini.circumlunar.space/docs/specification.html
 */
 
-func Render(text string, width int) (string, error) {
+type Markup []string
+
+func NewMarkup(text string) (*Markup, []string, error) {
 	lines := strings.Split(text, "\n")
+	_, links := renderWithLinks(lines, 80)
+	return (*Markup)(&lines), links, nil
+}
+
+func (m Markup) Render(width int) string {
+	rendered, _ := renderWithLinks(([]string)(m), width)
+	return rendered
+}
+
+func renderWithLinks(lines []string, width int) (string, []string) {
+	links := []string{}
 	result := ""
 	preformattedMode := false
 	preformattedBuffer := ""
@@ -34,12 +47,13 @@ func Render(text string, width int) (string, error) {
 		}
 
 		if match := regexp.MustCompile(`^=>[ \t]*(.*?)(?:[ \t]+(.*))?$`).FindStringSubmatch(line); len(match) == 3 {
-			url := match[1]
+			uri := match[1]
 			alt := match[2]
 			if alt == "" {
-				alt = url
+				alt = uri
 			}
-			result += style.LinkBlock(alt) + "\n"
+			links = append(links, uri)
+			result += style.LinkBlock(alt, len(links)) + "\n"
 		} else if match := regexp.MustCompile(`^#[ \t]+(.*)$`).FindStringSubmatch(line); len(match) == 2 {
 			result += style.Header(match[1], 1) + "\n"
 		} else if match := regexp.MustCompile(`^##[ \t]+(.*)$`).FindStringSubmatch(line); len(match) == 2 {
@@ -60,5 +74,5 @@ func Render(text string, width int) (string, error) {
 		result += style.CodeBlock(strings.TrimSuffix(preformattedBuffer, "\n")) + "\n"
 	}
 
-	return strings.TrimSuffix(result, "\n"), nil
+	return strings.Trim(result, "\n"), links
 }

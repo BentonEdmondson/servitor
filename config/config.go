@@ -8,24 +8,27 @@ import (
 )
 
 type Config struct {
-	Context int
-	Timeout int
-	Feeds   feeds
-	Algos   algos
+	Context int `toml:"context"`
+	Timeout int `toml:"timeout"`
+	Feeds   feeds `toml:"feeds"`
+	Algos   algos `toml:"algos"`
+	MediaHook   []string `toml:"media_hook"`
 }
 
 type feeds = map[string][]string
 type algos = map[string]struct {
-	Server string
-	Query  string
+	Server string `toml:"server"`
+	Query  string `toml:"query"`
 }
 
 func Parse() (*Config, error) {
+	/* Default values */
 	config := &Config{
 		Context: 5,
 		Timeout: 10,
 		Feeds:   feeds{},
 		Algos:   algos{},
+		MediaHook:   []string{"xdg-open", "%u"},
 	}
 
 	location := location()
@@ -42,7 +45,7 @@ func Parse() (*Config, error) {
 	}
 
 	if undecoded := metadata.Undecoded(); len(undecoded) != 0 {
-		return nil, fmt.Errorf("config file %s contained unexpected keys: %v", location, undecoded)
+		return nil, fmt.Errorf("config file %s contained unrecognized keys: %v", location, undecoded)
 	}
 
 	return config, nil

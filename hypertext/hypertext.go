@@ -1,7 +1,6 @@
 package hypertext
 
 import (
-	"errors"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 	"mimicry/ansi"
@@ -10,47 +9,45 @@ import (
 	"strings"
 )
 
-// TODO: create a `bulletedList` function for all situations where
-// html-specific wrapping is needed. Put them at the bottom of the file
-// and note that that section is different. (This will include one for
-// headers)
+type Markup []*html.Node
 
-// TODO: blocks need to be trimmed on the inside and newlined on
-// the outside
+type context struct {
+	preserveWhitespace bool
+	width int
+	links *[]string
+}
 
-/*
-Terminal codes and control characters should already be escaped
-
-	by this point
-*/
-func Render(text string, width int) (string, error) {
+func NewMarkup(text string) (*Markup, []string, error) {
 	nodes, err := html.ParseFragment(strings.NewReader(text), &html.Node{
 		Type:     html.ElementNode,
 		Data:     "body",
 		DataAtom: atom.Body,
 	})
 	if err != nil {
-		return "", err
+		return nil, []string{}, err
 	}
-	rendered, err := renderList(nodes, width)
-	if err != nil {
-		return "", err
-	}
-
-	wrapped := ansi.Wrap(rendered, width)
-	return strings.Trim(wrapped, " \n"), nil
+	_, links := renderWithLinks(nodes, 80)
+	return (*Markup)(&nodes), links, nil
 }
 
-func renderList(nodes []*html.Node, width int) (string, error) {
+func (m Markup) Render(width int) string {
+	rendered, _ := renderWithLinks(([]*html.Node)(m), width)
+	return rendered
+}
+
+func renderWithLinks(nodes []*html.Node, width int) (string, []string) {
+	ctx := context{
+		preserveWhitespace: false,
+		width: width,
+		links: &[]string{},
+	}
 	output := ""
 	for _, current := range nodes {
-		result, err := renderNode(current, width, false)
-		if err != nil {
-			return "", err
-		}
+		result := renderNode(current, ctx)
 		output = mergeText(output, result)
 	}
-	return output, nil
+	output = ansi.Wrap(output, width)
+	return strings.Trim(output, " \n"), *ctx.links
 }
 
 /*
@@ -82,182 +79,181 @@ func mergeText(lhs string, rhs string) string {
 		return lhsTrimmed + rhsTrimmed
 	}
 
-	switch strings.Count(whitespace, "\n") {
-	case 0:
+	newlineCount := strings.Count(whitespace, "\n")
+
+	if newlineCount == 0 {
 		return lhsTrimmed + " " + rhsTrimmed
-	case 1:
+	}
+
+	if newlineCount == 1 {
 		return lhsTrimmed + "\n" + rhsTrimmed
 	}
 
 	return lhsTrimmed + "\n\n" + rhsTrimmed
 }
 
-func renderNode(node *html.Node, width int, preserveWhitespace bool) (string, error) {
+func renderNode(node *html.Node, ctx context) string {
 	if node.Type == html.TextNode {
-		if !preserveWhitespace {
+		if !ctx.preserveWhitespace {
 			whitespace := regexp.MustCompile(`[ \t\n\r]+`)
-			return whitespace.ReplaceAllString(node.Data, " "), nil
+			return whitespace.ReplaceAllString(node.Data, " ")
 		}
-		return node.Data, nil
+		return node.Data
 	}
 
 	if node.Type != html.ElementNode {
-		return "", nil
-	}
-
-	content, err := renderChildren(node, width, preserveWhitespace)
-	if err != nil {
-		return "", err
+		return ""
 	}
 
 	switch node.Data {
 	case "a":
-		return style.Link(content), nil
+		link := getAttribute("href", node.Attr)
+		if link == "" {
+			return renderChildren(node, ctx)
+		}
+		*ctx.links = append(*ctx.links, link)
+		/* This must occur before the styling because it mutates ctx.links */
+		rendered := renderChildren(node, ctx)
+		return style.Link(rendered, len(*ctx.links))
 	case "s", "del":
-		return style.Strikethrough(content), nil
+		return style.Strikethrough(renderChildren(node, ctx))
 	case "code":
-		return style.Code(content), nil
+		ctx.preserveWhitespace = true
+		return style.Code(renderChildren(node, ctx))
 	case "i", "em":
-		return style.Italic(content), nil
+		return style.Italic(renderChildren(node, ctx))
 	case "b", "strong":
-		return style.Bold(content), nil
+		return style.Bold(renderChildren(node, ctx))
 	case "u", "ins":
-		return style.Underline(content), nil
+		return style.Underline(renderChildren(node, ctx))
 	case "mark":
-		return style.Highlight(content), nil
+		return style.Highlight(renderChildren(node, ctx))
 	case "span", "li", "small":
-		return content, nil
+		return renderChildren(node, ctx)
 	case "br":
-		return "\n", nil
+		return "\n"
 
 	case "p", "div":
-		return block(content), nil
+		return block(renderChildren(node, ctx))
 	case "pre":
-		content, err := renderChildren(node, width-2, true)
-		if err != nil {
-			return "", err
-		}
-		wrapped := situationalWrap(content, width, true)
-		return block(style.CodeBlock(wrapped)), err
+		ctx.preserveWhitespace = true
+		wrapped := ansi.Pad(situationalWrap(renderChildren(node, ctx), ctx), ctx.width)
+		return block(style.CodeBlock(wrapped))
 	case "blockquote":
-		content, err := renderChildren(node, width-1, preserveWhitespace)
-		if err != nil {
-			return "", err
-		}
-		wrapped := situationalWrap(content, width-1, preserveWhitespace)
-		// TODO: this text wrap is ugly
-		return block(style.QuoteBlock(strings.Trim(wrapped, " \n"))), nil
+		ctx.width -= 1
+		wrapped := situationalWrap(renderChildren(node, ctx), ctx)
+		return block(style.QuoteBlock(strings.Trim(wrapped, " \n")))
 	case "ul":
-		list, err := bulletedList(node, width, preserveWhitespace)
-		return list, err
+		return bulletedList(node, ctx)
 	// case "ul":
-	// 	return numberedList(node), nil
-
+	// 	return numberedList(node)
 	case "h1":
-		content, err := renderChildren(node, width-2, preserveWhitespace)
-		if err != nil {
-			return "", err
-		}
-		wrapped := situationalWrap(content, width-2, preserveWhitespace)
-		return block(style.Header(wrapped, 1)), nil
+		ctx.width -= 2
+		wrapped := situationalWrap(renderChildren(node, ctx), ctx)
+		return block(style.Header(wrapped, 1))
 	case "h2":
-		content, err := renderChildren(node, width-3, preserveWhitespace)
-		if err != nil {
-			return "", err
-		}
-		wrapped := situationalWrap(content, width-3, preserveWhitespace)
-		return block(style.Header(wrapped, 2)), nil
+		ctx.width -= 3
+		wrapped := situationalWrap(renderChildren(node, ctx), ctx)
+		return block(style.Header(wrapped, 2))
 	case "h3":
-		content, err := renderChildren(node, width-4, preserveWhitespace)
-		if err != nil {
-			return "", err
-		}
-		wrapped := situationalWrap(content, width-4, preserveWhitespace)
-		return block(style.Header(wrapped, 3)), nil
+		ctx.width -= 4
+		wrapped := situationalWrap(renderChildren(node, ctx), ctx)
+		return block(style.Header(wrapped, 3))
 	case "h4":
-		content, err := renderChildren(node, width-5, preserveWhitespace)
-		if err != nil {
-			return "", err
-		}
-		wrapped := situationalWrap(content, width-5, preserveWhitespace)
-		return block(style.Header(wrapped, 4)), nil
+		ctx.width -= 5
+		wrapped := situationalWrap(renderChildren(node, ctx), ctx)
+		return block(style.Header(wrapped, 4))
 	case "h5":
-		content, err := renderChildren(node, width-6, preserveWhitespace)
-		if err != nil {
-			return "", err
-		}
-		wrapped := situationalWrap(content, width-6, preserveWhitespace)
-		return block(style.Header(wrapped, 5)), nil
+		ctx.width -= 6
+		wrapped := situationalWrap(renderChildren(node, ctx), ctx)
+		return block(style.Header(wrapped, 5))
 	case "h6":
-		content, err := renderChildren(node, width-7, preserveWhitespace)
-		if err != nil {
-			return "", err
-		}
-		wrapped := situationalWrap(content, width-7, preserveWhitespace)
-		return block(style.Header(wrapped, 6)), nil
-
+		ctx.width -= 7
+		wrapped := situationalWrap(renderChildren(node, ctx), ctx)
+		return block(style.Header(wrapped, 6))
 	case "hr":
-		return block(strings.Repeat("―", width)), nil
-	case "img", "video", "audio", "iframe":
-		text := getAttribute("alt", node.Attr)
-		if text == "" {
-			text = getAttribute("title", node.Attr)
-		}
-		if text == "" {
-			text = getAttribute("src", node.Attr)
-		}
-		if text == "" {
-			return "", errors.New(node.Data + " tag is missing both `alt` and `src` attributes")
-		}
-		wrapped := situationalWrap(text, width-2, preserveWhitespace)
-		return block(style.LinkBlock(wrapped)), nil
-	}
+		return block(style.Color(strings.Repeat("\u23AF", ctx.width)))
 
-	return "", errors.New("Encountered unrecognized element " + node.Data)
+	/*
+		The spec does not define the alt attribute for videos nor audio.
+		I think it should, so if present I display it. It is
+		tempting to use the children of the video and audio tags for
+		this purpose, but it looks like they exist more so for backwards
+		compatibility, so should contain something like "your browser does
+		not support inline video; click here" as opposed to actual alt
+		text.
+	*/
+	case "img", "video", "audio":
+		alt := getAttribute("alt", node.Attr)
+		link := getAttribute("src", node.Attr)
+		if alt == "" {
+			alt = link
+		}
+		if link == "" {
+			return block(alt)
+		}
+		*ctx.links = append(*ctx.links, link)
+		ctx.width -= 2
+		wrapped := situationalWrap(alt, ctx)
+		return block(style.LinkBlock(wrapped, len(*ctx.links)))
+	case "iframe":
+		alt := getAttribute("title", node.Attr)
+		link := getAttribute("src", node.Attr)
+		if alt == "" {
+			alt = link
+		}
+		if link == "" {
+			return block(alt)
+		}
+		*ctx.links = append(*ctx.links, link)
+		ctx.width -= 2
+		wrapped := situationalWrap(alt, ctx)
+		return block(style.LinkBlock(wrapped, len(*ctx.links)))
+	default:
+		return bad(node, ctx)
+	}
 }
 
-func renderChildren(node *html.Node, width int, preserveWhitespace bool) (string, error) {
+func renderChildren(node *html.Node, ctx context) string {
 	output := ""
 	for current := node.FirstChild; current != nil; current = current.NextSibling {
-		result, err := renderNode(current, width, preserveWhitespace)
-		if err != nil {
-			return "", err
-		}
+		result := renderNode(current, ctx)
 		output = mergeText(output, result)
 	}
-	return output, nil
+	return output
 }
 
 func block(text string) string {
 	return "\n\n" + strings.Trim(text, " \n") + "\n\n"
 }
 
-func bulletedList(node *html.Node, width int, preserveWhitespace bool) (string, error) {
+func bulletedList(node *html.Node, ctx context) string {
 	output := ""
+	ctx.width -= 2
 	for current := node.FirstChild; current != nil; current = current.NextSibling {
 		if current.Type != html.ElementNode {
 			continue
 		}
 
+		result := ""
 		if current.Data != "li" {
-			continue
+			result = bad(current, ctx)
+		} else {
+			result = renderNode(current, ctx)
 		}
 
-		result, err := renderNode(current, width-2, preserveWhitespace)
-		if err != nil {
-			return "", err
-		}
-		wrapped := situationalWrap(result, width-2, preserveWhitespace)
+		wrapped := situationalWrap(result, ctx)
 		output += "\n" + style.Bullet(wrapped)
 	}
 
-	if node.Parent == nil {
-		return block(output), nil
-	} else if node.Parent.Data == "li" {
-		return output, nil
-	} else {
-		return block(output), nil
+	if node.Parent != nil && node.Parent.Data == "li" {
+		return output
 	}
+	return block(output)
+}
+
+func bad(node *html.Node, ctx context) string {
+	return style.Red("<" + node.Data + ">") + renderChildren(node, ctx) + style.Red("</" + node.Data + ">")
 }
 
 func getAttribute(name string, attributes []html.Attribute) string {
@@ -269,10 +265,11 @@ func getAttribute(name string, attributes []html.Attribute) string {
 	return ""
 }
 
-func situationalWrap(text string, width int, preserveWhitespace bool) string {
-	if preserveWhitespace {
-		return ansi.DumbWrap(text, width)
+func situationalWrap(text string, ctx context) string {
+	if ctx.preserveWhitespace {
+		// TODO: I should probably change DumbWrap to truncate (which just lets it go off the end of the screen)
+		return ansi.DumbWrap(text, ctx.width)
 	}
 
-	return ansi.Wrap(text, width)
+	return ansi.Wrap(text, ctx.width)
 }

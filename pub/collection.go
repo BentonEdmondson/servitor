@@ -41,13 +41,17 @@ type Collection struct {
 }
 
 func NewCollection(input any, source *url.URL) (*Collection, error) {
-	c := &Collection{}
-	var o object.Object
-	var err error
-	o, c.id, err = client.FetchUnknown(input, source)
+	o, id, err := client.FetchUnknown(input, source)
 	if err != nil {
 		return nil, err
 	}
+	return NewCollectionFromObject(o, id)
+}
+
+func NewCollectionFromObject(o object.Object, id *url.URL) (*Collection, error) {
+	c := &Collection{}
+	c.id = id
+	var err error
 	if c.kind, err = o.GetString("type"); err != nil {
 		return nil, err
 	}
@@ -98,6 +102,12 @@ func (c *Collection) Harvest(amount uint, startingPoint uint) ([]Tangible, Conta
 	} else {
 		length = uint(len(c.elements))
 	}
+
+	// TODO: need a mechanism to not infiniloop when page has no elements
+	// be advised Mastodon has an empty Collection followed by a potentially
+	// empty CollectionPage followed by the content
+	// This is what causes the "Killed" message.
+	// The solution will be to make this method iterative instead of recursive
 
 	// TODO: change to bool nextWillBeFetched in which case amount from this page is all
 	// and later on the variable is clear

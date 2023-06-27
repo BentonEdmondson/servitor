@@ -2,6 +2,7 @@ package pub
 
 import (
 	"time"
+	"mimicry/mime"
 )
 
 type Any any
@@ -15,6 +16,7 @@ type Tangible interface {
 	Children() Container
 	Timestamp() time.Time
 	Name() string
+	SelectLink(input int) (string, *mime.MediaType, bool)
 }
 
 type Container interface {

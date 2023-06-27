@@ -112,26 +112,50 @@ func getActor(o object.Object, key string, source *url.URL) (*Actor, error) {
 }
 
 func NewTangible(input any, source *url.URL) Tangible {
-	var fetched Tangible
-	fetched, err := NewPost(input, source)
-
-	if errors.Is(err, ErrWrongType) {
-		fetched, err = NewActor(input, source)
+	fetched := New(input, source)
+	if tangible, ok := fetched.(Tangible); ok {
+		return tangible
 	}
+	return NewFailure(errors.New("item is non-Tangible"))
+}
 
-	if errors.Is(err, ErrWrongType) {
-		fetched, err = NewActivity(input, source)
-	}
-
-	if errors.Is(err, ErrWrongType) {
-		return NewFailure(err)
-	}
-
+func New(input any, source *url.URL) any {
+	o, id, err := client.FetchUnknown(input, source)
 	if err != nil {
 		return NewFailure(err)
 	}
 
-	return fetched
+	var result any
+
+	result, err = NewActorFromObject(o, id)
+	if err == nil {
+		return result
+	} else if !errors.Is(err, ErrWrongType) {
+		return NewFailure(err)
+	}
+
+	result, err = NewPostFromObject(o, id)
+	if err == nil {
+		return result
+	} else if !errors.Is(err, ErrWrongType) {
+		return NewFailure(err)
+	}
+
+	result, err = NewActivityFromObject(o, id)
+	if err == nil {
+		return result
+	} else if !errors.Is(err, ErrWrongType) {
+		return NewFailure(err)
+	}
+
+	result, err = NewCollectionFromObject(o, id)
+	if err == nil {
+		return result
+	} else if !errors.Is(err, ErrWrongType) {
+		return NewFailure(err)
+	}
+
+	return NewFailure(errors.New("item is of unrecognized type"))
 }
 
 /*
@@ -147,7 +171,7 @@ func getLinksShorthand(o object.Object, key string) ([]*Link, error) {
 
 	for i, element := range list {
 		switch narrowed := element.(type) {
-		case object.Object:
+		case map[string]any:
 			link, err := NewLink(narrowed)
 			if err != nil {
 				return nil, err
@@ -188,13 +212,13 @@ func getFirstLinkShorthand(o object.Object, key string) (*Link, error) {
 func getLinks(o object.Object, key string) ([]*Link, error) {
 	list, err := o.GetList(key)
 	if err != nil {
-		return nil, err
+		return []*Link{}, err
 	}
 	links := make([]*Link, len(list))
 	for i, element := range list {
 		link, err := NewLink(element)
 		if err != nil {
-			return nil, err
+			return []*Link{}, err
 		}
 		links[i] = link
 	}

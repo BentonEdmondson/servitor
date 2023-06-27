@@ -6,6 +6,10 @@ import (
 	"mimicry/mime"
 	"net/url"
 	"time"
+	"mimicry/plaintext"
+	"mimicry/hypertext"
+	"mimicry/markdown"
+	"mimicry/gemtext"
 )
 
 type Object map[string]any
@@ -32,7 +36,14 @@ func (o Object) GetAny(key string) (any, error) {
 }
 
 func (o Object) GetString(key string) (string, error) {
-	return getPrimitive[string](o, key)
+	value, err := getPrimitive[string](o, key)
+	if err != nil {
+		return "", err
+	}
+	if value == "" {
+		return "", ErrKeyNotPresent
+	}
+	return value, nil
 }
 
 // TODO: should probably error for non-uints
@@ -94,37 +105,32 @@ func (o Object) GetMediaType(key string) (*mime.MediaType, error) {
 	}
 }
 
-/* https://www.w3.org/TR/activitystreams-core/#naturalLanguageValues */
-func (o Object) GetNatural(key string, language string) (string, error) {
-	values, err := o.GetObject(key + "Map")
-	hasMap := true
+type Markup interface {
+	Render(width int) string
+}
+
+func (o Object) GetMarkup(contentKey string, mediaTypeKey string) (Markup, []string, error) {
+	content, err := o.GetString(contentKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	mediaType, err := o.GetMediaType(mediaTypeKey)
 	if errors.Is(err, ErrKeyNotPresent) {
-		hasMap = false
+		mediaType = mime.Default()
 	} else if err != nil {
-		return "", err
+		return nil, nil, err
 	}
 
-	if hasMap {
-		if value, err := values.GetString(language); err == nil {
-			return value, nil
-		} else if !errors.Is(err, ErrKeyNotPresent) {
-			return "", fmt.Errorf("failed to extract from \"%s\": %w", key+"Map", err)
-		}
+	switch mediaType.Essence {
+	case "text/plain":
+		return plaintext.NewMarkup(content)
+	case "text/html":
+		return hypertext.NewMarkup(content)
+	case "text/gemini":
+		return gemtext.NewMarkup(content)
+	case "text/markdown":
+		return markdown.NewMarkup(content)
+	default:
+		return nil, nil, errors.New("cannot render text of mime type " + mediaType.Essence)
 	}
-
-	if value, err := o.GetString(key); err == nil {
-		return value, nil
-	} else if !errors.Is(err, ErrKeyNotPresent) {
-		return "", err
-	}
-
-	if hasMap {
-		if value, err := values.GetString("und"); err == nil {
-			return value, nil
-		} else if !errors.Is(err, ErrKeyNotPresent) {
-			return "", fmt.Errorf("failed to extract from \"%s\": %w", key+"Map", err)
-		}
-	}
-
-	return "", fmt.Errorf("failed to extract natural \"%s\": %w", key, ErrKeyNotPresent)
 }

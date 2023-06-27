@@ -3,7 +3,6 @@ package object
 import (
 	"errors"
 	"testing"
-	// "encoding/json"
 )
 
 func TestString(t *testing.T) {
@@ -106,61 +105,5 @@ func TestList(t *testing.T) {
 	_, err = o.GetList("absent")
 	if !errors.Is(err, ErrKeyNotPresent) {
 		t.Fatalf(`Expected ErrKeyNotPresent, not %v`, err)
-	}
-}
-
-func TestNatural(t *testing.T) {
-	// desired key should have value "target"
-	// language that is targeted is "en"
-	tests := []Object{
-		// TODO: this hasn't been implemented
-		// I will want it to be deterministic, so will need to sort by key and then take the first one
-		// // fall back to first element of map if nothing better
-		// {
-		// 	"contentMap": map[string]any {
-		// 		"fr": "target",
-		// 	},
-		// },
-
-		// use "und" if nothing better
-		{
-			"contentMap": map[string]any{
-				"und": "target",
-				"fr":  "ignored",
-			},
-		},
-
-		// use the key itself if nothing better
-		{
-			"content": "target",
-			"contentMap": map[string]any{
-				"und": "ignored",
-				"fr":  "ignored",
-			},
-		},
-
-		// use the desired language if possible
-		{
-			"content": "ignored",
-			"contentMap": map[string]any{
-				"en":  "target",
-				"und": "ignored",
-				"fr":  "ignored",
-			},
-		},
-
-		// use key itself if map is absent
-		{
-			"content": "target",
-		},
-	}
-	for i, test := range tests {
-		response, err := test.GetNatural("content", "en")
-		if err != nil {
-			t.Fatalf("Problem extracting natural in case %v: %v", i, err)
-		}
-		if response != "target" {
-			t.Fatalf(`Expected natural value in case %v to return "target", not %#v`, i, response)
-		}
 	}
 }

@@ -2,25 +2,35 @@ package markdown
 
 import (
 	"mimicry/style"
-	"mimicry/util"
 	"testing"
 )
 
 func TestBasic(t *testing.T) {
 	input := `[Here's a link!](https://wikipedia.org)
 
-![This is a beautiful image!](https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Francesco_Melzi_-_Portrait_of_Leonardo.png/800px-Francesco_Melzi_-_Portrait_of_Leonardo.png)
+![This is a beautiful image!](https://miro.medium.com/v2/resize:fit:900/0*L31Zh4YhAv3Wokco)
 
 * Nested list
   * Nesting`
-	output, err := Render(input, 50)
+	markup, links, err := NewMarkup(input)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
-	expected := style.Link("Here's a link!") + "\n\n" +
-		style.LinkBlock("This is a beautiful image!") + "\n\n" +
+	if links[0] != "https://wikipedia.org" {
+		t.Fatalf("first link should be https://wikipedia.org not %s", links[0])
+	}
+
+	if links[1] != "https://miro.medium.com/v2/resize:fit:900/0*L31Zh4YhAv3Wokco" {
+		t.Fatalf("second link should be https://miro.medium.com/v2/resize:fit:900/0*L31Zh4YhAv3Wokco not %s", links[1])
+	}
+
+	output := markup.Render(50)
+	expected := style.Link("Here's a link!", 1) + "\n\n" +
+		style.LinkBlock("This is a beautiful image!", 2) + "\n\n" +
 		style.Bullet("Nested list\n"+style.Bullet("Nesting"))
 
-	util.AssertEqual(expected, output, t)
+	if expected != output {
+		t.Fatalf("expected %s not %s", expected, output)
+	}
 }

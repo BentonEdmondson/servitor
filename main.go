@@ -13,6 +13,17 @@ import (
 // TODO: clean up most panics
 
 func main() {
+	if len(os.Args) < 3 {
+		help()
+		return
+	}
+
+	config, err := config.Parse()
+	if err != nil {
+		os.Stderr.WriteString(err.Error() + "\n")
+		return
+	}
+
 	oldTerminal, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
 		panic(err)
@@ -22,36 +33,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	config, err := config.Parse()
-	if err != nil {
-		panic(err)
-	}
-	state := ui.NewState(config, width, height, printRaw)
 
-	if len(os.Args) < 2 {
+	state := ui.NewState(config, width, height, printRaw)
+	err = state.Subcommand(os.Args[1], os.Args[2])
+	if err != nil {
+		term.Restore(int(os.Stdin.Fd()), oldTerminal)
 		help()
 		return
-	}
-
-	switch os.Args[1] {
-	case "open":
-		if len(os.Args) == 3 {
-			state.Open(os.Args[2])
-		} else {
-			help()
-			return
-		}
-	case "feed":
-		if len(os.Args) == 2 {
-			state.Feed("default")
-		} else if len(os.Args) == 3 {
-			state.Feed(os.Args[2])
-		} else {
-			help()
-			return
-		}
-	default:
-		panic("expected a command as the first argument")
 	}
 
 	go func() {
@@ -74,8 +62,7 @@ func main() {
 			printRaw("")
 			return
 		}
-
-		state.Update(input)
+		go state.Update(input)
 	}
 }
 

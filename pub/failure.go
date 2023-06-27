@@ -3,6 +3,7 @@ package pub
 import (
 	"mimicry/style"
 	"time"
+	"mimicry/mime"
 )
 
 type Failure struct {
@@ -40,4 +41,8 @@ func (f *Failure) Children() Container {
 
 func (f *Failure) Timestamp() time.Time {
 	return time.Time{}
+}
+
+func (f *Failure) SelectLink(input int) (string, *mime.MediaType, bool) {
+	return "", nil, false
 }

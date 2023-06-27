@@ -24,6 +24,22 @@ func Default() *MediaType {
 	}
 }
 
+func Unknown() *MediaType {
+	return &MediaType {
+		Essence: "*/*",
+		Supertype: "*",
+		Subtype: "*",
+	}
+}
+
+func UnknownSubtype(supertype string) *MediaType {
+	return &MediaType {
+		Essence: supertype + "/*",
+		Supertype: supertype,
+		Subtype: "*",
+	}
+}
+
 func Parse(input string) (*MediaType, error) {
 	matches := re.FindStringSubmatch(input)
 

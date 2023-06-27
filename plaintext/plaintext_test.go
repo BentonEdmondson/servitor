@@ -3,22 +3,34 @@ package plaintext
 import (
 	"mimicry/ansi"
 	"mimicry/style"
-	"mimicry/util"
 	"testing"
 )
 
 func TestBasic(t *testing.T) {
 	input := `Yes, Jim, I found it under "http://www.w3.org/Addressing/",
-but you can probably pick it up from <ftp://foo.example.com/rfc/>.
+but you can probably pick it up from the store.
 Note the warning in <http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING>.`
-	output, err := Render(input, 50)
+	markup, links, err := NewMarkup(input)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
+	}
+	output := markup.Render(50)
+
+	first := links[0]
+	if first != "http://www.w3.org/Addressing/" {
+		t.Fatalf("first uri should be http://www.w3.org/Addressing/ not %s", first)
 	}
 
-	expected := ansi.Wrap("Yes, Jim, I found it under \""+style.Link("http://www.w3.org/Addressing/")+
-		"\",\nbut you can probably pick it up from <"+style.Link("ftp://foo.example.com/rfc/")+
-		">.\nNote the warning in <"+style.Link("http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING")+">.", 50)
+	second := links[1]
+	if second != "http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING" {
+		t.Fatalf("first uri should be http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING not %s", second)
+	}
 
-	util.AssertEqual(expected, output, t)
+	expected := ansi.Wrap("Yes, Jim, I found it under \""+style.Link("http://www.w3.org/Addressing/", 1)+
+		"\",\nbut you can probably pick it up from the store.\n" +
+		"Note the warning in <"+style.Link("http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING", 2)+">.", 50)
+
+	if expected != output {
+		t.Fatalf("expected markup to be %s not %s", expected, output)
+	}
 }

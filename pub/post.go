@@ -6,14 +6,13 @@ import (
 	"golang.org/x/exp/slices"
 	"mimicry/ansi"
 	"mimicry/client"
-	"mimicry/mime"
 	"mimicry/object"
-	"mimicry/render"
 	"mimicry/style"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+	"mimicry/mime"
 )
 
 type Post struct {
@@ -22,12 +21,11 @@ type Post struct {
 
 	title        string
 	titleErr     error
-	body         string
+	body         object.Markup
+	bodyLinks	[]string
 	bodyErr      error
-	mediaType    *mime.MediaType
-	mediaTypeErr error
-	link         *Link
-	linkErr      error
+	media         *Link
+	mediaErr      error
 	created      time.Time
 	createdErr   error
 	edited       time.Time
@@ -62,24 +60,22 @@ func NewPostFromObject(o object.Object, id *url.URL) (*Post, error) {
 		return nil, err
 	}
 
-	// TODO: for Lemmy, may have to auto-unwrap Create into a Post
 	if !slices.Contains([]string{
 		"Article", "Audio", "Document", "Image", "Note", "Page", "Video",
 	}, p.kind) {
 		return nil, fmt.Errorf("%w: %s is not a Post", ErrWrongType, p.kind)
 	}
 
-	p.title, p.titleErr = o.GetNatural("name", "en")
-	p.body, p.bodyErr = o.GetNatural("content", "en")
-	p.mediaType, p.mediaTypeErr = o.GetMediaType("mediaType")
+	p.title, p.titleErr = o.GetString("name")
+	p.body, p.bodyLinks, p.bodyErr = o.GetMarkup("content", "mediaType")
 	p.created, p.createdErr = o.GetTime("published")
 	p.edited, p.editedErr = o.GetTime("updated")
 	p.parent, p.parentErr = o.GetAny("inReplyTo")
 
 	if p.kind == "Image" || p.kind == "Audio" || p.kind == "Video" {
-		p.link, p.linkErr = getBestLinkShorthand(o, "url", strings.ToLower(p.kind))
+		p.media, p.mediaErr = getBestLinkShorthand(o, "url", strings.ToLower(p.kind))
 	} else {
-		p.link, p.linkErr = getFirstLinkShorthand(o, "url")
+		p.media, p.mediaErr = getFirstLinkShorthand(o, "url")
 	}
 
 	var wg sync.WaitGroup
@@ -185,17 +181,7 @@ func (p *Post) center(width int) (string, bool) {
 		return ansi.Wrap(style.Problem(p.bodyErr), width), true
 	}
 
-	mediaType := p.mediaType
-	if errors.Is(p.mediaTypeErr, object.ErrKeyNotPresent) {
-		mediaType = mime.Default()
-	} else if p.mediaTypeErr != nil {
-		return ansi.Wrap(style.Problem(p.mediaTypeErr), width), true
-	}
-
-	rendered, err := render.Render(p.body, mediaType.Essence, width)
-	if err != nil {
-		return style.Problem(err), true
-	}
+	rendered := p.body.Render(width)
 	return rendered, true
 }
 
@@ -210,8 +196,9 @@ func (p *Post) supplement(width int) (string, bool) {
 		return "", false
 	}
 
+	// TODO: don't think this is good, rework it
 	output := ""
-	for _, attachment := range p.attachments {
+	for i, attachment := range p.attachments {
 		if output != "" {
 			output += "\n"
 		}
@@ -220,9 +207,9 @@ func (p *Post) supplement(width int) (string, bool) {
 			output += style.Problem(err)
 			continue
 		}
-		output += style.LinkBlock(alt)
+		output += style.LinkBlock(ansi.Wrap(alt, width-2), len(p.bodyLinks) + i + 1)
 	}
-	return ansi.Wrap(output, width), true
+	return output, true
 }
 
 func (p *Post) footer(width int) string {
@@ -260,15 +247,19 @@ func (p Post) String(width int) string {
 func (p *Post) Preview(width int) string {
 	output := p.header(width)
 
-	if body, present := p.center(width); present {
-		if attachments, present := p.supplement(width); present {
-			output += "\n" + ansi.Snip(body+"\n"+attachments, width, 4, style.Color("\u2026"))
-		} else {
-			output += "\n" + ansi.Snip(body, width, 4, style.Color("\u2026"))
-		}
+	body, bodyPresent := p.center(width)
+	if bodyPresent {
+		output += "\n" + body
 	}
 
-	return output
+	if attachments, present := p.supplement(width); present {
+		if bodyPresent {
+			output += "\n"
+		}
+		output += "\n" + attachments
+	}
+
+	return ansi.Snip(output, width, 4, style.Color("\u2026"))
 }
 
 func (p *Post) Timestamp() time.Time {
@@ -292,4 +283,28 @@ func (p *Post) Creators() []Tangible {
 
 func (p *Post) Recipients() []Tangible {
 	return p.recipients
+}
+
+func (p *Post) Media() (string, *mime.MediaType, bool) {
+	if p.mediaErr != nil {
+		return "", nil, false
+	}
+
+	if p.kind == "Audio" || p.kind == "Video" || p.kind == "Image" {
+		return p.media.SelectWithDefaultMediaType(mime.UnknownSubtype(strings.ToLower(p.kind)))
+	}
+
+	return p.media.Select()
+}
+
+func (p *Post) SelectLink(input int) (string, *mime.MediaType, bool) {
+	input -= 1
+	if len(p.bodyLinks) > input {
+		return p.bodyLinks[input], mime.Unknown(), true
+	}
+	nextIndex := input - len(p.bodyLinks)
+	if len(p.attachments) > nextIndex {
+		return p.attachments[nextIndex].Select()
+	}
+	return "", nil, false
 }

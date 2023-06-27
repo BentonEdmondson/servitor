@@ -2,7 +2,6 @@ package gemtext
 
 import (
 	"mimicry/style"
-	"mimicry/util"
 	"testing"
 )
 
@@ -20,19 +19,30 @@ func TestBasic(t *testing.T) {
 =>http://example.org/
 
 ` + "```\ncode block\nhere\n```"
-	output, err := Render(input, 50)
+	markup, links, err := NewMarkup(input)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
+	if links[0] != "https://www.wikipedia.org/" {
+		t.Fatalf("first link should be https://www.wikipedia.org/ not %s", links[0])
+	}
+
+	if links[1] != "http://example.org/" {
+		t.Fatalf("second link should be http://example.org/ not %s", links[1])
+	}
+	
+	output := markup.Render(50)
 	expected := style.QuoteBlock("blockquote") + "\n\n" +
 		style.Bullet("bullet point") + "\n\n" +
 		style.Header("large header", 1) + "\n" +
 		style.Header("smaller header", 2) + "\n" +
 		style.Header("smallest header", 3) + "\n\n" +
-		style.LinkBlock("Wikipedia is great!") + "\n\n" +
-		style.LinkBlock("http://example.org/") + "\n\n" +
+		style.LinkBlock("Wikipedia is great!", 1) + "\n\n" +
+		style.LinkBlock("http://example.org/", 2) + "\n\n" +
 		style.CodeBlock("code block\nhere")
 
-	util.AssertEqual(expected, output, t)
+	if expected != output {
+		t.Fatalf("expected %s not %s", expected, output)
+	}
 }

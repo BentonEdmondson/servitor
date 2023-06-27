@@ -59,10 +59,6 @@ func NewLink(input any) (*Link, error) {
 	return l, nil
 }
 
-func (l *Link) Kind() string {
-	return l.kind
-}
-
 func (l *Link) Alt() (string, error) {
 	if l.altErr == nil {
 		return l.alt, nil
@@ -96,13 +92,9 @@ func (l *Link) rating() (uint64, error) {
 	return height * width, nil
 }
 
-func (l *Link) MediaType() (*mime.MediaType, error) {
-	return l.mediaType, l.mediaTypeErr
-}
-
 func SelectBestLink(links []*Link, supertype string) (*Link, error) {
 	if len(links) == 0 {
-		return &Link{}, errors.New("can't select best link of type " + supertype + "/* from an empty list")
+		return nil, errors.New("can't select best link of type " + supertype + "/* from an empty list")
 	}
 
 	bestLink := links[0]
@@ -150,6 +142,21 @@ func SelectBestLink(links []*Link, supertype string) (*Link, error) {
 	}
 
 	return bestLink, nil
+}
+
+func (l *Link) Select() (string, *mime.MediaType, bool) {
+	return l.SelectWithDefaultMediaType(mime.Unknown())
+}
+
+func (l *Link) SelectWithDefaultMediaType(defaultMediaType *mime.MediaType) (string, *mime.MediaType, bool) {
+	if l.uriErr != nil {
+		return "", nil, false
+	}
+	/* I suppress this error here because it is shown in the alt text */
+	if l.mediaTypeErr != nil {
+		return l.uri.String(), defaultMediaType, true
+	}
+	return l.uri.String(), l.mediaType, true
 }
 
 func SelectFirstLink(links []*Link) (*Link, error) {

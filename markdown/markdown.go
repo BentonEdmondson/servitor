@@ -5,20 +5,22 @@ import (
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"mimicry/hypertext"
-	"strings"
 )
 
 var renderer = goldmark.New(goldmark.WithExtensions(extension.GFM))
 
-func Render(text string, width int) (string, error) {
+type Markup hypertext.Markup
+
+func NewMarkup(text string) (*Markup, []string, error) {
 	var buf bytes.Buffer
 	if err := renderer.Convert([]byte(text), &buf); err != nil {
-		return "", nil
+		return nil, []string{}, err
 	}
 	output := buf.String()
-	rendered, err := hypertext.Render(output, width)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(rendered), nil
+	hypertextMarkup, links, err := hypertext.NewMarkup(output)
+	return (*Markup)(hypertextMarkup), links, err
+}
+
+func (m *Markup) Render(width int) string {
+	return (*hypertext.Markup)(m).Render(width)
 }

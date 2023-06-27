@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"mimicry/ansi"
 	"strings"
+	"strconv"
 )
 
 func background(text string, r uint8, g uint8, b uint8) string {
@@ -44,12 +45,16 @@ func Color(text string) string {
 	return foreground(text, 164, 245, 155)
 }
 
-func Problem(text error) string {
-	return foreground(text.Error(), 156, 53, 53)
+func Problem(issue error) string {
+	return Red(issue.Error())
 }
 
-func Link(text string) string {
-	return Underline(Color(text))
+func Red(text string) string {
+	return foreground(text, 156, 53, 53)
+}
+
+func Link(text string, number int) string {
+	return Color(Underline(text) + superscript(number))
 }
 
 func CodeBlock(text string) string {
@@ -61,8 +66,8 @@ func QuoteBlock(text string) string {
 	return Color(prefixed)
 }
 
-func LinkBlock(text string) string {
-	return "‣ " + ansi.Indent(Link(text), "  ", false)
+func LinkBlock(text string, number int) string {
+	return "‣ " + ansi.Indent(Link(text, number), "  ", false)
 }
 
 func Header(text string, level uint) string {
@@ -73,4 +78,24 @@ func Header(text string, level uint) string {
 
 func Bullet(text string) string {
 	return "• " + ansi.Indent(text, "  ", false)
+}
+
+func superscript(value int) string {
+	text := strconv.Itoa(value)
+	return strings.Map(func(input rune) rune {
+		switch input {
+		case '0': return '\u2070'
+		case '1': return '\u00B9'
+		case '2': return '\u00B2'
+		case '3': return '\u00B3'
+		case '4': return '\u2074'
+		case '5': return '\u2075'
+		case '6': return '\u2076'
+		case '7': return '\u2077'
+		case '8': return '\u2078'
+		case '9': return '\u2079'
+		default:
+			panic("cannot superscript non-digit")
+		}
+	}, text)
 }
