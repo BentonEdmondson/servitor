@@ -18,11 +18,15 @@ func FetchUnknown(input any, source *url.URL) (object.Object, *url.URL, error) {
 	var obj object.Object
 	switch narrowed := input.(type) {
 	case string:
-		url, err := url.Parse(narrowed)
+		ref, err := url.Parse(narrowed)
 		if err != nil {
 			return nil, nil, err
 		}
-		obj, source, err = FetchURL(url)
+		if source != nil {
+			obj, source, err = FetchURL(source.ResolveReference(ref))
+		} else {
+			obj, source, err = FetchURL(ref)
+		}
 		if err != nil {
 			return nil, nil, err
 		}
