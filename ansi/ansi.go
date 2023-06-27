@@ -227,9 +227,8 @@ func DumbWrap(text string, width int) string {
 	Limits `text` to the given `height` and `width`, adding an
 	ellipsis to the end and omitting trailing whitespace-only lines
 */
-// TODO: this function could be optimized into just one loop
 func Snip(text string, width, height int, ellipsis string) string {
-	snipped := []string{}
+	snipped := make([]string, 0, height)
 
 	/* This split is fine because newlines are
 	   guaranteed to not be wrapped in ansi codes */
@@ -237,12 +236,13 @@ func Snip(text string, width, height int, ellipsis string) string {
 
 	requiresEllipsis := false
 
-	if len(lines) < height {
+	if len(lines) <= height {
 		height = len(lines)
 	} else {
 		requiresEllipsis = true
 	}
 
+	/* Adding from back to front */
 	for i := height - 1; i >= 0; i -= 1 {
 		line := expand(lines[i])
 		if len(snipped) == 0 {
@@ -252,7 +252,7 @@ func Snip(text string, width, height int, ellipsis string) string {
 			}
 
 			/* Remove last character to make way for ellipsis */
-			if len(line) == width {
+			if len(line) == width && requiresEllipsis {
 				line = line[:len(line)-1]
 			}
 		}

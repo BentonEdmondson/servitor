@@ -176,6 +176,13 @@ func TestSnip(t *testing.T) {
 			3,
 			3,
 		},
+		// Omit ellipsis when perfect fit
+		{
+			"one\ntwo\nthree",
+			"one\ntwo\nthree",
+			3,
+			5,
+		},
 	}
 
 	for _, test := range tests {
