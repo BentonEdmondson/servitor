@@ -9,7 +9,11 @@ import (
 	"strings"
 )
 
-type Markup []*html.Node
+type Markup struct {
+	tree []*html.Node
+	cached string
+	cachedWidth int
+}
 
 type context struct {
 	preserveWhitespace bool
@@ -26,12 +30,21 @@ func NewMarkup(text string) (*Markup, []string, error) {
 	if err != nil {
 		return nil, []string{}, err
 	}
-	_, links := renderWithLinks(nodes, 80)
-	return (*Markup)(&nodes), links, nil
+	rendered, links := renderWithLinks(nodes, 80)
+	return &Markup{
+		tree: nodes,
+		cached: rendered,
+		cachedWidth: 80,
+	}, links, nil
 }
 
-func (m Markup) Render(width int) string {
-	rendered, _ := renderWithLinks(([]*html.Node)(m), width)
+func (m *Markup) Render(width int) string {
+	if m.cachedWidth == width {
+		return m.cached
+	}
+	rendered, _ := renderWithLinks(m.tree, width)
+	m.cachedWidth = width
+	m.cached = rendered
 	return rendered
 }
 

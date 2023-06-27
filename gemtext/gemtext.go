@@ -11,16 +11,29 @@ import (
 	https://gemini.circumlunar.space/docs/specification.html
 */
 
-type Markup []string
+type Markup struct {
+	tree []string
+	cached string
+	cachedWidth int
+}
 
 func NewMarkup(text string) (*Markup, []string, error) {
 	lines := strings.Split(text, "\n")
-	_, links := renderWithLinks(lines, 80)
-	return (*Markup)(&lines), links, nil
+	rendered, links := renderWithLinks(lines, 80)
+	return &Markup{
+		tree: lines,
+		cached: rendered,
+		cachedWidth: 80,
+	}, links, nil
 }
 
-func (m Markup) Render(width int) string {
-	rendered, _ := renderWithLinks(([]string)(m), width)
+func (m *Markup) Render(width int) string {
+	if m.cachedWidth == width {
+		return m.cached
+	}
+	rendered, _ := renderWithLinks(m.tree, width)
+	m.cached = rendered
+	m.cachedWidth = width
 	return rendered
 }
 

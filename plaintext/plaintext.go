@@ -7,15 +7,29 @@ import (
 	"strings"
 )
 
-type Markup string
+type Markup struct {
+	text string
+	cached string
+	cachedWidth int
+}
 
 func NewMarkup(text string) (*Markup, []string, error) {
 	rendered, links := renderWithLinks(text, 80)
-	return (*Markup)(&rendered), links, nil
+
+	return &Markup{
+		text: text,
+		cached: rendered,
+		cachedWidth: 80,
+	}, links, nil
 }
 
-func (m Markup) Render(width int) string {
-	rendered, _ := renderWithLinks(string(m), width)
+func (m *Markup) Render(width int) string {
+	if m.cachedWidth == width {
+		return m.cached
+	}
+	rendered, _ := renderWithLinks(m.text, width)
+	m.cached = rendered
+	m.cachedWidth = width
 	return rendered
 }
 
