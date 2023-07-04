@@ -8,12 +8,12 @@ import (
 
 var post1, _ = pub.NewPostFromObject(object.Object{
 	"type":    "Note",
-	"content": "Hello!",
+	"content": "Here from post1",
 }, nil)
 
 var post2, _ = pub.NewPostFromObject(object.Object{
 	"type":    "Video",
-	"content": "Goodbye!",
+	"content": "Here from post2",
 }, nil)
 
 func TestCreate(t *testing.T) {
@@ -26,7 +26,7 @@ func TestCreate(t *testing.T) {
 
 func TestCreateCreateAndAppend(t *testing.T) {
 	feed := CreateAndAppend([]pub.Tangible{post1})
-	shouldBePost1 := feed.Get(1)
+	shouldBePost1 := feed.Get(0)
 	if shouldBePost1 != post1 {
 		t.Fatalf("Posts differed after create centerless, is %#v but should be %#v", shouldBePost1, post1)
 	}
@@ -35,7 +35,7 @@ func TestCreateCreateAndAppend(t *testing.T) {
 			t.Fatalf("After create centerless, Get(0) should have panicked but did not")
 		}
 	}()
-	feed.Get(0)
+	feed.Get(-1)
 }
 
 func TestAppend(t *testing.T) {
@@ -62,4 +62,81 @@ func TestPrepend(t *testing.T) {
 	if shouldBePost2 != post2 {
 		t.Fatalf("Prepended posts differ, is %#v but should be %#v", shouldBePost2, post2)
 	}
+}
+
+func TestMoveDown(t *testing.T) {
+	feed := CreateAndAppend([]pub.Tangible{post1, post2})
+	feed.MoveDown()
+	shouldBePost2 := feed.Current()
+	if shouldBePost2 != post2 {
+		t.Fatalf("is %#v but should be %#v", shouldBePost2, post2)
+	}
+	shouldBePost1 := feed.Get(-1)
+	if shouldBePost1 != post1 {
+		t.Fatalf("is %#v but should be %#v", shouldBePost1, post1)
+	}
+
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("Get(1) should have panicked but did not")
+		}
+	}()
+	feed.Get(1)
+
+	/* Repeat everything exactly */
+	feed.MoveDown()
+	shouldBePost2 = feed.Current()
+	if shouldBePost2 != post2 {
+		t.Fatalf("is %#v but should be %#v", shouldBePost2, post2)
+	}
+	shouldBePost1 = feed.Get(-1)
+	if shouldBePost1 != post1 {
+		t.Fatalf("is %#v but should be %#v", shouldBePost1, post1)
+	}
+
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("Get(1) should have panicked but did not")
+		}
+	}()
+	feed.Get(1)
+}
+
+func TestMoveUp(t *testing.T) {
+	feed := Create(post1)
+	feed.Prepend([]pub.Tangible{post2})
+	feed.MoveUp()
+	shouldBePost2 := feed.Current()
+	if shouldBePost2 != post2 {
+		t.Fatalf("is %#v but should be %#v", shouldBePost2, post2)
+	}
+	shouldBePost1 := feed.Get(1)
+	if shouldBePost1 != post1 {
+		t.Fatalf("is %#v but should be %#v", shouldBePost1, post1)
+	}
+
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("Get(-1) should have panicked but did not")
+		}
+	}()
+	feed.Get(-1)
+
+	/* Repeat everything exactly */
+	feed.MoveUp()
+	shouldBePost2 = feed.Current()
+	if shouldBePost2 != post2 {
+		t.Fatalf("is %#v but should be %#v", shouldBePost2, post2)
+	}
+	shouldBePost1 = feed.Get(1)
+	if shouldBePost1 != post1 {
+		t.Fatalf("is %#v but should be %#v", shouldBePost1, post1)
+	}
+
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("Get(-1) should have panicked but did not")
+		}
+	}()
+	feed.Get(-1)
 }

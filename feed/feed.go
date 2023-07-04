@@ -11,6 +11,8 @@ type Feed struct {
 	// exclusive bounds
 	upperBound int
 	lowerBound int
+
+	index int
 }
 
 func CreateEmpty() *Feed {
@@ -18,6 +20,7 @@ func CreateEmpty() *Feed {
 		feed:       map[int]pub.Tangible{},
 		upperBound: 0,
 		lowerBound: 0,
+		index: 0,
 	}
 }
 
@@ -28,6 +31,7 @@ func Create(input pub.Tangible) *Feed {
 		},
 		upperBound: 1,
 		lowerBound: -1,
+		index: 0,
 	}
 }
 
@@ -36,6 +40,7 @@ func CreateAndAppend(input []pub.Tangible) *Feed {
 		feed: map[int]pub.Tangible{},
 	}
 	f.upperBound = 1
+	f.index = 1
 	f.Append(input)
 	return f
 }
@@ -54,18 +59,40 @@ func (f *Feed) Prepend(input []pub.Tangible) {
 	f.lowerBound -= len(input)
 }
 
-func (f *Feed) Get(index int) pub.Tangible {
-	if !f.Contains(index) {
-		panic(fmt.Sprintf("indexing feed at %d whereas bounds are %d and %d", index, f.lowerBound, f.upperBound))
+func (f *Feed) Get(offset int) pub.Tangible {
+	if !f.Contains(offset) {
+		panic(fmt.Sprintf("indexing feed at %d whereas bounds are %d and %d", f.index + offset, f.lowerBound, f.upperBound))
 	}
 
-	return f.feed[index]
+	return f.feed[f.index + offset]
 }
 
-func (f *Feed) Contains(index int) bool {
-	return index < f.upperBound && index > f.lowerBound
+func (f *Feed) Current() pub.Tangible {
+	return f.feed[f.index]
 }
 
-func (f *Feed) IsEmpty() bool {
-	return f.upperBound == 0 && f.lowerBound == 0
+func (f *Feed) MoveUp() {
+	if f.Contains(-1) {
+		f.index -= 1
+	}
+}
+
+func (f *Feed) MoveDown() {
+	if f.Contains(1) {
+		f.index += 1
+	}
+}
+
+func (f *Feed) MoveToCenter() {
+	if f.Contains(-f.index) {
+		f.index = 0
+	}
+}
+
+func (f *Feed) Contains(offset int) bool {
+	return f.index + offset < f.upperBound && f.index + offset> f.lowerBound
+}
+
+func (f *Feed) Location(offset int) int {
+	return f.index + offset
 }

@@ -39,7 +39,6 @@ const (
 
 type Page struct {
 	feed  *feed.Feed
-	index int
 
 	frontier  pub.Tangible
 	loadingUp bool
@@ -70,21 +69,21 @@ func (s *State) view() string {
 	}
 
 	var top, center, bottom string
-	for i := s.h.Current().index - s.config.Context; i <= s.h.Current().index+s.config.Context; i++ {
+	for i := -s.config.Context; i <= s.config.Context; i++ {
 		if !s.h.Current().feed.Contains(i) {
 			continue
 		}
 		var serialized string
-		if i == 0 {
+		if s.h.Current().feed.Location(i) == 0 {
 			serialized = s.h.Current().feed.Get(i).String(s.width - 4)
-		} else if i > 0 {
+		} else if s.h.Current().feed.Location(i) > 0 {
 			serialized = "→ " + ansi.Indent(s.h.Current().feed.Get(i).Preview(s.width-8), "  ", false)
 		} else {
 			serialized = s.h.Current().feed.Get(i).Preview(s.width - 4)
 		}
-		if i == s.h.Current().index {
+		if i == 0 {
 			center = ansi.Indent(serialized, "┃ ", true)
-		} else if i < s.h.Current().index {
+		} else if i < 0 {
 			if top != "" {
 				top += "\n"
 			}
@@ -206,7 +205,7 @@ func (s *State) Update(input byte) {
 			if err != nil {
 				panic("buffer had a non-number while in selection mode")
 			}
-			link, mediaType, present := s.h.Current().feed.Get(s.h.Current().index).SelectLink(number)
+			link, mediaType, present := s.h.Current().feed.Current().SelectLink(number)
 			if !present {
 				s.buffer = ""
 				s.mode = normal
@@ -230,27 +229,21 @@ func (s *State) Update(input byte) {
 	switch input {
 	// TODO: make feed stateful so all this logic is nicer. Functions will be MoveUp, MoveDown, MoveToCenter
 	case 'k': // up
-		if s.h.Current().feed.Contains(s.h.Current().index - 1) {
-			s.h.Current().index -= 1
-		}
+		s.h.Current().feed.MoveUp()
 		s.loadSurroundings()
 	case 'j': // down
-		if s.h.Current().feed.Contains(s.h.Current().index + 1) {
-			s.h.Current().index += 1
-		}
+		s.h.Current().feed.MoveDown()
 		s.loadSurroundings()
 	case 'g': // return to OP
-		if s.h.Current().feed.Contains(0) {
-			s.h.Current().index = 0
-		}
+		s.h.Current().feed.MoveToCenter()
 	case 'h': // back in history
 		s.h.Back()
 	case 'l': // forward in history
 		s.h.Forward()
 	case ' ': // select
-		s.switchTo(s.h.Current().feed.Get(s.h.Current().index))
+		s.switchTo(s.h.Current().feed.Current())
 	case 'c': // get creator of post
-		unwrapped := s.h.Current().feed.Get(s.h.Current().index)
+		unwrapped := s.h.Current().feed.Current()
 		if activity, ok := unwrapped.(*pub.Activity); ok {
 			unwrapped = activity.Target()
 		}
@@ -259,7 +252,7 @@ func (s *State) Update(input byte) {
 			s.switchTo(creators)
 		}
 	case 'r': // get recipient of post
-		unwrapped := s.h.Current().feed.Get(s.h.Current().index)
+		unwrapped := s.h.Current().feed.Current()
 		if activity, ok := unwrapped.(*pub.Activity); ok {
 			unwrapped = activity.Target()
 		}
@@ -268,12 +261,12 @@ func (s *State) Update(input byte) {
 			s.switchTo(recipients)
 		}
 	case 'a': // get actor of activity
-		if activity, ok := s.h.Current().feed.Get(s.h.Current().index).(*pub.Activity); ok {
+		if activity, ok := s.h.Current().feed.Current().(*pub.Activity); ok {
 			actor := activity.Actor()
 			s.switchTo(actor)
 		}
 	case 'o':
-		unwrapped := s.h.Current().feed.Get(s.h.Current().index)
+		unwrapped := s.h.Current().feed.Current()
 		if activity, ok := unwrapped.(*pub.Activity); ok {
 			unwrapped = activity.Target()
 		}
@@ -283,13 +276,13 @@ func (s *State) Update(input byte) {
 			}
 		}
 	case 'p':
-		if actor, ok := s.h.Current().feed.Get(s.h.Current().index).(*pub.Actor); ok {
+		if actor, ok := s.h.Current().feed.Current().(*pub.Actor); ok {
 			if link, mediaType, present := actor.ProfilePic(); present {
 				s.openExternally(link, mediaType)
 			}
 		}
 	case 'b':
-		if actor, ok := s.h.Current().feed.Get(s.h.Current().index).(*pub.Actor); ok {
+		if actor, ok := s.h.Current().feed.Current().(*pub.Actor); ok {
 			if link, mediaType, present := actor.Banner(); present {
 				s.openExternally(link, mediaType)
 			}
@@ -313,7 +306,6 @@ func (s *State) switchTo(item any) {
 		} else {
 			s.h.Add(&Page{
 				feed: feed.CreateAndAppend(narrowed),
-				index: 1,
 			})
 		}
 	case pub.Tangible:
@@ -331,7 +323,6 @@ func (s *State) switchTo(item any) {
 			basepoint: newBasepoint,
 			children: nextCollection,
 			feed: feed.CreateAndAppend(children),
-			index: 1,
 		})
 	default:
 		panic(fmt.Sprintf("unrecognized non-Tangible non-Container: %T", item))
@@ -355,7 +346,7 @@ func (s *State) SetWidthHeight(width int, height int) {
 func (s *State) loadSurroundings() {
 	page := s.h.Current()
 	context := s.config.Context
-	if !page.loadingUp && !page.feed.Contains(page.index-context) && page.frontier != nil {
+	if !page.loadingUp && !page.feed.Contains(-context) && page.frontier != nil {
 		page.loadingUp = true
 		go func() {
 			parents, newFrontier := page.frontier.Parents(uint(context))
@@ -367,7 +358,7 @@ func (s *State) loadSurroundings() {
 			s.m.Unlock()
 		}()
 	}
-	if !page.loadingDown && !page.feed.Contains(page.index+context) && page.children != nil {
+	if !page.loadingDown && !page.feed.Contains(context) && page.children != nil {
 		page.loadingDown = true
 		go func() {
 			// TODO: need to do a new renaming, maybe upperFrontier, lowerFrontier
