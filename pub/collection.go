@@ -79,15 +79,15 @@ func NewCollectionFromObject(o object.Object, id *url.URL) (*Collection, error) 
 	return c, nil
 }
 
-func (c *Collection) Kind() string {
-	return c.kind
-}
-
 func (c *Collection) Size() (uint64, error) {
 	return c.size, c.sizeErr
 }
 
 func (c *Collection) Harvest(amount uint, startingPoint uint) ([]Tangible, Container, uint) {
+	return c.harvestWithEmptyCount(amount, startingPoint, 0)
+}
+
+func (c *Collection) harvestWithEmptyCount(amount uint, startingPoint uint, emptyCount int) ([]Tangible, Container, uint) {
 	if c == nil {
 		panic("can't harvest nil collection")
 	}
@@ -103,14 +103,20 @@ func (c *Collection) Harvest(amount uint, startingPoint uint) ([]Tangible, Conta
 		length = uint(len(c.elements))
 	}
 
-	// TODO: need a mechanism to not infiniloop when page has no elements
-	// be advised Mastodon has an empty Collection followed by a potentially
-	// empty CollectionPage followed by the content
-	// This is what causes the "Killed" message.
-	// The solution will be to make this method iterative instead of recursive
+	if length == 0 {
+		emptyCount += 1
+	}
 
-	// TODO: change to bool nextWillBeFetched in which case amount from this page is all
-	// and later on the variable is clear
+	/*
+		This is set at 3 because 3 seems to be the maximum amount that servers send, besides cases of infinite loops.
+		Mastodon sends 3 in the following case:
+			- the first of is the Collection itself, which has no items because it puts items in CollectionPages
+			- the next page (the first CollectionPage) is empty because it only holds self-replies and there are none
+			- the next page (the second CollectionPage) is empty because it holds replies from others, which there are none
+	*/
+	if emptyCount > 3 {
+		return []Tangible{NewFailure(errors.New("refusing to read the next collection because >3 consecutive empty collections have been encountered"))}, nil, 0
+	}
 
 	var amountFromThisPage uint
 	if startingPoint >= length {
@@ -147,7 +153,7 @@ func (c *Collection) Harvest(amount uint, startingPoint uint) ([]Tangible, Conta
 		} else if next, err := NewCollection(c.next, c.id); err != nil {
 			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{NewFailure(err)}, nil, 0
 		} else {
-			fromLaterPages, nextCollection, nextStartingPoint = next.Harvest(amount-amountFromThisPage, 0)
+			fromLaterPages, nextCollection, nextStartingPoint = next.harvestWithEmptyCount(amount-amountFromThisPage, 0, emptyCount)
 		}
 
 		wg.Done()
