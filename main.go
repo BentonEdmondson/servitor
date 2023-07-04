@@ -58,7 +58,7 @@ func main() {
 		os.Stdin.Read(buffer)
 		input := buffer[0]
 
-		if input == 3 /*(ctrl+c)*/ || input == 'q' {
+		if input == 3 /*(ctrl+c)*/ {
 			printRaw("")
 			return
 		}
