@@ -328,9 +328,11 @@ func (s *State) switchTo(item any) {
 			frontier: narrowed,
 		})
 	case pub.Container:
-		s.mode = loading
-		s.buffer = ""
-		s.output(s.view())
+		if s.mode != loading {
+			s.mode = loading
+			s.buffer = ""
+			s.output(s.view())
+		}
 		children, nextCollection, newBasepoint := narrowed.Harvest(uint(s.config.Context), 0)
 		s.h.Add(&Page{
 			basepoint: newBasepoint,
