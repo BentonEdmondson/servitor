@@ -1,7 +1,8 @@
+// +build !offline
+
 package jtp
 
 import (
-	"mimicry/util"
 	"net/url"
 	"testing"
 )
@@ -10,13 +11,13 @@ func TestStatusLineNoInfo(t *testing.T) {
 	test := "HTTP/1.1 200\r\n"
 	status, err := parseStatusLine(test)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
-	util.AssertEqual("200", status, t)
+	if status != "200" {
+		t.Fatalf("expected status 200 but received %s", status)
+	}
 }
 
-// TODO: put this behind an --online flag or figure out
-// how to nicely do offline tests
 func TestRedirect(t *testing.T) {
 	accept := "application/activity+json"
 	tolerated := []string{"application/json"}

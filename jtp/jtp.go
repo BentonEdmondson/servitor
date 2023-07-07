@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"mimicry/mime"
 )
 
 var dialer = &net.Dialer{
@@ -60,10 +61,9 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 		port = "443"
 	}
 
-	// TODO: link.Host may work instead of needing net.JoinHostPort
 	hostport := net.JoinHostPort(link.Hostname(), port)
 
-	connection, err := tls.DialWithDialer(dialer, "tcp", hostport /*config =*/, nil)
+	connection, err := tls.DialWithDialer(dialer, "tcp", hostport, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -100,7 +100,7 @@ func Get(link *url.URL, accept string, tolerated []string, maxRedirects uint) (m
 
 		if maxRedirects == 0 {
 			return nil, nil, errors.Join(
-				errors.New("Received "+status+" but max redirects has already been reached"),
+				errors.New("received "+status+" after redirecting too many times"),
 				connection.Close(),
 			)
 		}
@@ -151,20 +151,20 @@ func parseStatusLine(text string) (string, error) {
 	matches := statusLineRegexp.FindStringSubmatch(text)
 
 	if len(matches) != 2 {
-		return "", errors.New("Received invalid status line: " + text)
+		return "", errors.New("received invalid status line: " + text)
 	}
 
 	return matches[1], nil
 }
 
-func parseContentType(text string) (*MediaType, bool, error) {
+func parseContentType(text string) (*mime.MediaType, bool, error) {
 	matches := contentTypeRegexp.FindStringSubmatch(text)
 
 	if len(matches) != 2 {
 		return nil, false, nil
 	}
 
-	mediaType, err := ParseMediaType(matches[1])
+	mediaType, err := mime.Parse(matches[1])
 	if err != nil {
 		return nil, true, err
 	}
@@ -210,12 +210,12 @@ func validateHeaders(buf *bufio.Reader, tolerated []string) error {
 		if mediaType.Matches(tolerated) {
 			contentTypeValidated = true
 		} else {
-			return errors.New("Response contains invalid content type " + mediaType.Full)
+			return errors.New("response is of invalid type " + mediaType.Essence)
 		}
 	}
 
 	if !contentTypeValidated {
-		return errors.New("Response did not contain a content type")
+		return errors.New("response is missing a content type")
 	}
 
 	return nil
@@ -242,35 +242,5 @@ func findLocation(buf *bufio.Reader, baseLink *url.URL) (*url.URL, error) {
 
 		return location, nil
 	}
-	return nil, errors.New("Location is not present in headers")
-}
-
-type MediaType struct {
-	Supertype string
-	Subtype   string
-	/* Full omits the parameters */
-	Full string
-}
-
-func ParseMediaType(text string) (*MediaType, error) {
-	matches := mediaTypeRegexp.FindStringSubmatch(text)
-
-	if len(matches) != 4 {
-		return nil, errors.New(text + " is not a valid media type")
-	}
-
-	return &MediaType{
-		Supertype: matches[2],
-		Subtype:   matches[3],
-		Full:      matches[1],
-	}, nil
-}
-
-func (m *MediaType) Matches(mediaTypes []string) bool {
-	for _, mediaType := range mediaTypes {
-		if m.Full == mediaType {
-			return true
-		}
-	}
-	return false
+	return nil, errors.New("response is missing Location header")
 }
