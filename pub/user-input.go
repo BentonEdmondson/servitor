@@ -6,8 +6,8 @@ import (
 )
 
 func FetchUserInput(text string) Any {
-	if strings.HasPrefix(text, "@") {
-		link, err := client.ResolveWebfinger(text)
+	if strings.HasPrefix(text, "@") || strings.HasPrefix(text, "!") {
+		link, err := client.ResolveWebfinger(text[1:])
 		if err != nil {
 			return NewFailure(err)
 		}

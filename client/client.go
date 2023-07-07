@@ -108,11 +108,6 @@ converts a webfinger identifier to a url
 see: https://datatracker.ietf.org/doc/html/rfc7033
 */
 func ResolveWebfinger(username string) (string, error) {
-	if len(username) == 0 || username[0] != '@' {
-		panic("webfinger usernames must begin with @")
-	}
-
-	username = username[1:]
 	split := strings.SplitN(username, "@", 2)
 	var account, domain string
 	if len(split) != 2 {
