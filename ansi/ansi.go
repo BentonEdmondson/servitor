@@ -6,12 +6,6 @@ import (
 	"unicode"
 )
 
-// TODO: probably make a type Expanded which is an array of
-// structs to make things more readable and type safe
-
-// TODO: all source code should be ascii so it's more readable,
-// unicode characters should use escape codes
-
 func expand(text string) [][]string {
 	r := regexp.MustCompile(`(?s)((?:\x1b\[.*?m)*)(.)(?:\x1b\[0m)?`)
 	return r.FindAllStringSubmatch(text, -1)
@@ -114,8 +108,6 @@ func Wrap(text string, length int) string {
 		full := match[0]
 		letter := match[2]
 
-		/* TODO: I need to find the list of non-breaking whitespace characters
-		to exclude from this conditional */
 		if !unicode.IsSpace([]rune(letter)[0]) {
 			if wordLength == length {
 				/*
@@ -336,18 +328,13 @@ func Squash(text string) string {
 	return strings.ReplaceAll(text, "\n", " ")
 }
 
-/*
-	TODO:
-		add `Scrub` function that removes all ANSI codes from text
-		(this will be used when people redirect output to file)
-
-		add `Squash` function that converts newlines to spaces
-		(this will be used to prevent newlines from appearing
-		in things like names and titles), and removes control
-		characters
-
-		add `StrictWrap` function that wraps not based on whitespace
-		but strictly on length (this will be used for code blocks)
-
-		move `RemoveControlCharacters` from render to here
-*/
+func Scrub(text string) string {
+	text = strings.ReplaceAll(text, "\t", "    ")
+	text = strings.Map(func(input rune) rune {
+		if input != '\n' && unicode.IsControl(input) {
+			return -1
+		}
+		return input
+	}, text)
+	return text
+}
