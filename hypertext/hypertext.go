@@ -3,8 +3,8 @@ package hypertext
 import (
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
-	"mimicry/ansi"
-	"mimicry/style"
+	"servitor/ansi"
+	"servitor/style"
 	"regexp"
 	"strings"
 )

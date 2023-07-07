@@ -1,7 +1,7 @@
 package markdown
 
 import (
-	"mimicry/style"
+	"servitor/style"
 	"testing"
 )
 

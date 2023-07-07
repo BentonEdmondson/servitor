@@ -1,8 +1,8 @@
 package feed
 
 import (
-	"mimicry/object"
-	"mimicry/pub"
+	"servitor/object"
+	"servitor/pub"
 	"testing"
 )
 

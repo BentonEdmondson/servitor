@@ -1,8 +1,8 @@
 package plaintext
 
 import (
-	"mimicry/ansi"
-	"mimicry/style"
+	"servitor/ansi"
+	"servitor/style"
 	"testing"
 )
 

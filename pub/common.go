@@ -3,8 +3,8 @@ package pub
 import (
 	"errors"
 	"fmt"
-	"mimicry/client"
-	"mimicry/object"
+	"servitor/client"
+	"servitor/object"
 	"net/url"
 	"sync"
 	"time"

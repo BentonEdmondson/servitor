@@ -53,11 +53,11 @@ func Parse() (*Config, error) {
 
 func location() string {
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-		return xdg + "/mimicry/config.toml"
+		return xdg + "/servitor/config.toml"
 	}
 
 	if home := os.Getenv("HOME"); home != "" {
-		return home + "/.config/mimicry/config.toml"
+		return home + "/.config/servitor/config.toml"
 	}
 
 	return ""

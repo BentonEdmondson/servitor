@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
-	"mimicry/hypertext"
+	"servitor/hypertext"
 )
 
 var renderer = goldmark.New(goldmark.WithExtensions(extension.GFM))

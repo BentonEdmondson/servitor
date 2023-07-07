@@ -1,7 +1,7 @@
 package splicer
 
 import (
-	"mimicry/pub"
+	"servitor/pub"
 	"sync"
 )
 

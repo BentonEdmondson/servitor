@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	lru "github.com/hashicorp/golang-lru/v2"
-	"mimicry/mime"
+	"servitor/mime"
 	"net"
 	"net/url"
 	"regexp"

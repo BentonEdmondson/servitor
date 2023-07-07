@@ -1,7 +1,7 @@
 package pub
 
 import (
-	"mimicry/client"
+	"servitor/client"
 	"strings"
 )
 

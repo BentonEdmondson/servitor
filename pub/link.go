@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/exp/slices"
-	"mimicry/mime"
-	"mimicry/object"
+	"servitor/mime"
+	"servitor/object"
 	"net/url"
 )
 

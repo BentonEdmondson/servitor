@@ -1,7 +1,7 @@
 package gemtext
 
 import (
-	"mimicry/style"
+	"servitor/style"
 	"regexp"
 	"strings"
 )

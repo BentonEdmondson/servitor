@@ -1,8 +1,8 @@
 package main
 
 import (
-	"mimicry/config"
-	"mimicry/ui"
+	"servitor/config"
+	"servitor/ui"
 	"os"
 	"strings"
 	"time"

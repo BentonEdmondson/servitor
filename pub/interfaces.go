@@ -1,7 +1,7 @@
 package pub
 
 import (
-	"mimicry/mime"
+	"servitor/mime"
 	"time"
 )
 

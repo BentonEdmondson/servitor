@@ -1,8 +1,8 @@
 package pub
 
 import (
-	"mimicry/mime"
-	"mimicry/style"
+	"servitor/mime"
+	"servitor/style"
 	"time"
 )
 

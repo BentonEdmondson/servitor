@@ -1,4 +1,4 @@
-module mimicry
+module servitor
 
 go 1.20
 

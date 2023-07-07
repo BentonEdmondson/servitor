@@ -2,7 +2,7 @@ package style
 
 import (
 	"fmt"
-	"mimicry/ansi"
+	"servitor/ansi"
 	"strconv"
 	"strings"
 )

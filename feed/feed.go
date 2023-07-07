@@ -2,7 +2,7 @@ package feed
 
 import (
 	"fmt"
-	"mimicry/pub"
+	"servitor/pub"
 )
 
 type Feed struct {
