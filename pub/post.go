@@ -111,7 +111,7 @@ func (p *Post) Children() Container {
 
 func (p *Post) Parents(quantity uint) ([]Tangible, Tangible) {
 	if quantity == 0 {
-		panic("can't fetch 0 parents")
+		panic("can't fetch zero parents")
 	}
 	if errors.Is(p.parentErr, object.ErrKeyNotPresent) {
 		return []Tangible{}, nil
@@ -145,6 +145,8 @@ func (p *Post) header(width int) string {
 		output += style.Color("comment")
 	}
 
+	/* TODO: forgery checking is needed here; verify that the id of the post
+	   and id of the creators match */
 	if len(p.creators) > 0 {
 		output += " by "
 		for i, creator := range p.creators {
