@@ -50,7 +50,6 @@ func renderWithLinks(text string, width int) (string, []string) {
 	rendered := url.ReplaceAllStringFunc(text, func(link string) string {
 		links = append(links, link)
 
-		// TODO: this will be superscripted
 		return style.Link(link, len(links))
 	})
 	wrapped := ansi.Wrap(rendered, width)
