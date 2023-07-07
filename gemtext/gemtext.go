@@ -12,8 +12,8 @@ import (
 */
 
 type Markup struct {
-	tree []string
-	cached string
+	tree        []string
+	cached      string
 	cachedWidth int
 }
 
@@ -21,8 +21,8 @@ func NewMarkup(text string) (*Markup, []string, error) {
 	lines := strings.Split(text, "\n")
 	rendered, links := renderWithLinks(lines, 80)
 	return &Markup{
-		tree: lines,
-		cached: rendered,
+		tree:        lines,
+		cached:      rendered,
 		cachedWidth: 80,
 	}, links, nil
 }

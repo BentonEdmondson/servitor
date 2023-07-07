@@ -31,7 +31,7 @@ func TestBasic(t *testing.T) {
 	if links[1] != "http://example.org/" {
 		t.Fatalf("second link should be http://example.org/ not %s", links[1])
 	}
-	
+
 	output := markup.Render(50)
 	expected := style.QuoteBlock("blockquote") + "\n\n" +
 		style.Bullet("bullet point") + "\n\n" +

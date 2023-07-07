@@ -27,7 +27,7 @@ Note the warning in <http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING
 	}
 
 	expected := ansi.Wrap("Yes, Jim, I found it under \""+style.Link("http://www.w3.org/Addressing/", 1)+
-		"\",\nbut you can probably pick it up from the store.\n" +
+		"\",\nbut you can probably pick it up from the store.\n"+
 		"Note the warning in <"+style.Link("http://www.ics.uci.edu/pub/ietf/uri/historical.html#WARNING", 2)+">.", 50)
 
 	if expected != output {

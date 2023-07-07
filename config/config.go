@@ -8,11 +8,11 @@ import (
 )
 
 type Config struct {
-	Context int `toml:"context"`
-	Timeout int `toml:"timeout"`
-	Feeds   feeds `toml:"feeds"`
-	Algos   algos `toml:"algos"`
-	MediaHook   []string `toml:"media_hook"`
+	Context   int      `toml:"context"`
+	Timeout   int      `toml:"timeout"`
+	Feeds     feeds    `toml:"feeds"`
+	Algos     algos    `toml:"algos"`
+	MediaHook []string `toml:"media_hook"`
 }
 
 type feeds = map[string][]string
@@ -24,11 +24,11 @@ type algos = map[string]struct {
 func Parse() (*Config, error) {
 	/* Default values */
 	config := &Config{
-		Context: 5,
-		Timeout: 10,
-		Feeds:   feeds{},
-		Algos:   algos{},
-		MediaHook:   []string{"xdg-open", "%u"},
+		Context:   5,
+		Timeout:   10,
+		Feeds:     feeds{},
+		Algos:     algos{},
+		MediaHook: []string{"xdg-open", "%u"},
 	}
 
 	location := location()

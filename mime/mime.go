@@ -25,18 +25,18 @@ func Default() *MediaType {
 }
 
 func Unknown() *MediaType {
-	return &MediaType {
-		Essence: "*/*",
+	return &MediaType{
+		Essence:   "*/*",
 		Supertype: "*",
-		Subtype: "*",
+		Subtype:   "*",
 	}
 }
 
 func UnknownSubtype(supertype string) *MediaType {
-	return &MediaType {
-		Essence: supertype + "/*",
+	return &MediaType{
+		Essence:   supertype + "/*",
 		Supertype: supertype,
-		Subtype: "*",
+		Subtype:   "*",
 	}
 }
 

@@ -1,9 +1,9 @@
 package pub
 
 import (
+	"mimicry/mime"
 	"mimicry/style"
 	"time"
-	"mimicry/mime"
 )
 
 type Failure struct {

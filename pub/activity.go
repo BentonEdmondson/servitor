@@ -6,12 +6,12 @@ import (
 	"golang.org/x/exp/slices"
 	"mimicry/ansi"
 	"mimicry/client"
+	"mimicry/mime"
 	"mimicry/object"
 	"mimicry/style"
 	"net/url"
 	"sync"
 	"time"
-	"mimicry/mime"
 )
 
 type Activity struct {

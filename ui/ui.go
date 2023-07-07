@@ -5,15 +5,15 @@ import (
 	"mimicry/ansi"
 	"mimicry/config"
 	"mimicry/feed"
+	"mimicry/history"
+	"mimicry/mime"
 	"mimicry/pub"
 	"mimicry/splicer"
 	"mimicry/style"
-	"sync"
-	"mimicry/history"
 	"os/exec"
-	"mimicry/mime"
-	"strings"
 	"strconv"
+	"strings"
+	"sync"
 )
 
 /*
@@ -32,18 +32,18 @@ const (
 )
 
 const (
-	enterKey byte = '\r'
-	escapeKey byte = 27
+	enterKey     byte = '\r'
+	escapeKey    byte = 27
 	backspaceKey byte = 127
 )
 
 type Page struct {
-	feed  *feed.Feed
+	feed *feed.Feed
 
 	frontier  pub.Tangible
 	loadingUp bool
 
-	children        pub.Container
+	children    pub.Container
 	basepoint   uint
 	loadingDown bool
 }
@@ -59,7 +59,7 @@ type State struct {
 
 	config *config.Config
 
-	mode int
+	mode   int
 	buffer string
 }
 
@@ -68,7 +68,6 @@ func (s *State) view() string {
 
 	const parentConnector = "  │\n"
 	const childConnector = "\n"
-
 
 	if s.mode == loading {
 		return ansi.CenterVertically("", style.Color("  Loading…"), "", uint(s.height))
@@ -96,7 +95,7 @@ func (s *State) view() string {
 			}
 			continue
 		}
-		
+
 		serialized = ansi.Indent(serialized, "  ", true) + "\n"
 		if s.h.Current().feed.IsParent(i) {
 			serialized += parentConnector
@@ -109,10 +108,10 @@ func (s *State) view() string {
 			bottom += serialized
 		}
 	}
-	if s.h.Current().loadingUp && !s.h.Current().feed.Contains(-s.config.Context - 1) {
+	if s.h.Current().loadingUp && !s.h.Current().feed.Contains(-s.config.Context-1) {
 		top = "\n  " + style.Color("Loading…") + "\n\n" + top
 	}
-	if s.h.Current().loadingDown && !s.h.Current().feed.Contains(s.config.Context + 1) {
+	if s.h.Current().loadingDown && !s.h.Current().feed.Contains(s.config.Context+1) {
 		bottom += "  " + style.Color("Loading…") + "\n"
 	}
 
@@ -121,7 +120,7 @@ func (s *State) view() string {
 	bottom = strings.TrimSuffix(bottom, "\n")
 
 	output := ansi.CenterVertically(top, center, bottom, uint(s.height))
-	
+
 	var footer string
 	switch s.mode {
 	case normal:
@@ -233,7 +232,7 @@ func (s *State) Update(input byte) {
 				s.openExternally(link, mediaType)
 				return
 			}
-			
+
 		}
 		/* At this point we know input is a non-number, non-., non-enter */
 		s.mode = normal
@@ -313,7 +312,7 @@ func (s *State) switchTo(item any) {
 		}
 		if len(narrowed) == 1 {
 			s.h.Add(&Page{
-				feed: feed.Create(narrowed[0]),
+				feed:     feed.Create(narrowed[0]),
 				children: narrowed[0].Children(),
 				frontier: narrowed[0],
 			})
@@ -324,7 +323,7 @@ func (s *State) switchTo(item any) {
 		}
 	case pub.Tangible:
 		s.h.Add(&Page{
-			feed: feed.Create(narrowed),
+			feed:     feed.Create(narrowed),
 			children: narrowed.Children(),
 			frontier: narrowed,
 		})
@@ -335,8 +334,8 @@ func (s *State) switchTo(item any) {
 		children, nextCollection, newBasepoint := narrowed.Harvest(uint(s.config.Context), 0)
 		s.h.Add(&Page{
 			basepoint: newBasepoint,
-			children: nextCollection,
-			feed: feed.CreateAndAppend(children),
+			children:  nextCollection,
+			feed:      feed.CreateAndAppend(children),
 		})
 	default:
 		panic("can't switch to non-Tangible non-Container")
@@ -392,7 +391,7 @@ func (s *State) openUserInput(input string) {
 	s.mode = loading
 	s.buffer = ""
 	s.output(s.view())
-	go func(){
+	go func() {
 		result := pub.FetchUserInput(input)
 		s.m.Lock()
 		s.switchTo(result)
@@ -405,7 +404,7 @@ func (s *State) openInternally(input string) {
 	s.mode = loading
 	s.buffer = ""
 	s.output(s.view())
-	go func(){
+	go func() {
 		result := pub.New(input, nil)
 		s.m.Lock()
 		s.switchTo(result)
@@ -436,7 +435,7 @@ func (s *State) openFeed(input string) {
 
 func NewState(config *config.Config, width int, height int, output func(string)) *State {
 	s := &State{
-		h: history.History[*Page]{},
+		h:      history.History[*Page]{},
 		config: config,
 		width:  width,
 		height: height,
@@ -506,7 +505,7 @@ func (s *State) openExternally(link string, mediaType *mime.MediaType) {
 
 		s.m.Lock()
 		defer s.m.Unlock()
-		
+
 		if s.mode != opening {
 			return
 		}
@@ -519,7 +518,7 @@ func (s *State) openExternally(link string, mediaType *mime.MediaType) {
 			s.buffer = ""
 			return
 		}
-	
+
 		s.mode = normal
 		s.buffer = ""
 		s.output(s.view())

@@ -2,7 +2,7 @@ package history
 
 type History[T any] struct {
 	elements []T
-	index int
+	index    int
 }
 
 func (h *History[T]) Current() T {
@@ -16,7 +16,7 @@ func (h *History[T]) Back() {
 }
 
 func (h *History[T]) Forward() {
-	if len(h.elements) > h.index + 1 {
+	if len(h.elements) > h.index+1 {
 		h.index += 1
 	}
 }

@@ -77,7 +77,7 @@ const version = "0.0.0"
 
 func help() {
 	os.Stdout.WriteString(
-"Servitor v" + version + `
+		"Servitor v" + version + `
 
 Commands:
 servitor open <url or @>

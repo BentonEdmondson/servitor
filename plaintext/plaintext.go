@@ -8,8 +8,8 @@ import (
 )
 
 type Markup struct {
-	text string
-	cached string
+	text        string
+	cached      string
 	cachedWidth int
 }
 
@@ -17,8 +17,8 @@ func NewMarkup(text string) (*Markup, []string, error) {
 	rendered, links := renderWithLinks(text, 80)
 
 	return &Markup{
-		text: text,
-		cached: rendered,
+		text:        text,
+		cached:      rendered,
 		cachedWidth: 80,
 	}, links, nil
 }

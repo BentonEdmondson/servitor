@@ -216,8 +216,8 @@ func DumbWrap(text string, width int) string {
 }
 
 /*
-	Limits `text` to the given `height` and `width`, adding an
-	ellipsis to the end and omitting trailing whitespace-only lines
+Limits `text` to the given `height` and `width`, adding an
+ellipsis to the end and omitting trailing whitespace-only lines
 */
 func Snip(text string, width, height int, ellipsis string) string {
 	snipped := make([]string, 0, height)
@@ -316,10 +316,10 @@ func SetLength(text string, length int, ellipsis string) string {
 		return ""
 	}
 	if len(text) > length {
-		return text[:length - 1] + ellipsis
+		return text[:length-1] + ellipsis
 	}
 	if len(text) < length {
-		return text + strings.Repeat(" ", length - len(text))
+		return text + strings.Repeat(" ", length-len(text))
 	}
 	return text
 }

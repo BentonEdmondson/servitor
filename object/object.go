@@ -3,15 +3,15 @@ package object
 import (
 	"errors"
 	"fmt"
-	"mimicry/mime"
-	"net/url"
-	"time"
-	"mimicry/plaintext"
-	"mimicry/hypertext"
-	"mimicry/markdown"
-	"mimicry/gemtext"
 	"math"
 	"mimicry/ansi"
+	"mimicry/gemtext"
+	"mimicry/hypertext"
+	"mimicry/markdown"
+	"mimicry/mime"
+	"mimicry/plaintext"
+	"net/url"
+	"time"
 )
 
 type Object map[string]any

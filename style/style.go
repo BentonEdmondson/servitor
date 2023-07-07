@@ -3,8 +3,8 @@ package style
 import (
 	"fmt"
 	"mimicry/ansi"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 func background(text string, r uint8, g uint8, b uint8) string {
@@ -84,16 +84,26 @@ func superscript(value int) string {
 	text := strconv.Itoa(value)
 	return strings.Map(func(input rune) rune {
 		switch input {
-		case '0': return '\u2070'
-		case '1': return '\u00B9'
-		case '2': return '\u00B2'
-		case '3': return '\u00B3'
-		case '4': return '\u2074'
-		case '5': return '\u2075'
-		case '6': return '\u2076'
-		case '7': return '\u2077'
-		case '8': return '\u2078'
-		case '9': return '\u2079'
+		case '0':
+			return '\u2070'
+		case '1':
+			return '\u00B9'
+		case '2':
+			return '\u00B2'
+		case '3':
+			return '\u00B3'
+		case '4':
+			return '\u2074'
+		case '5':
+			return '\u2075'
+		case '6':
+			return '\u2076'
+		case '7':
+			return '\u2077'
+		case '8':
+			return '\u2078'
+		case '9':
+			return '\u2079'
 		default:
 			panic("can't superscript non-digit")
 		}

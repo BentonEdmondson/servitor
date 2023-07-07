@@ -7,12 +7,12 @@ import (
 	"errors"
 	"fmt"
 	lru "github.com/hashicorp/golang-lru/v2"
+	"mimicry/mime"
 	"net"
 	"net/url"
 	"regexp"
 	"strings"
 	"time"
-	"mimicry/mime"
 )
 
 var dialer = &net.Dialer{

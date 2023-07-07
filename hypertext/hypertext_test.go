@@ -1,9 +1,9 @@
 package hypertext
 
 import (
+	"mimicry/ansi"
 	"mimicry/style"
 	"testing"
-	"mimicry/ansi"
 )
 
 func TestMergeText(t *testing.T) {

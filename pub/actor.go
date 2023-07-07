@@ -6,12 +6,12 @@ import (
 	"golang.org/x/exp/slices"
 	"mimicry/ansi"
 	"mimicry/client"
+	"mimicry/mime"
 	"mimicry/object"
 	"mimicry/style"
 	"net/url"
 	"strings"
 	"time"
-	"mimicry/mime"
 )
 
 type Actor struct {
@@ -23,9 +23,9 @@ type Actor struct {
 
 	id *url.URL
 
-	bio          object.Markup
-	bioLinks	[]string
-	bioErr       error
+	bio      object.Markup
+	bioLinks []string
+	bioErr   error
 
 	joined    time.Time
 	joinedErr error

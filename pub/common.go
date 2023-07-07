@@ -236,7 +236,7 @@ func getBestLink(o object.Object, key string, supertype string) (*Link, error) {
 func ago(t time.Time) string {
 	duration := time.Since(t)
 
-	if days := int(duration.Hours()/24); days > 1 {
+	if days := int(duration.Hours() / 24); days > 1 {
 		return fmt.Sprintf("%d days ago", int(days))
 	} else if days == 1 {
 		return "1 day ago"

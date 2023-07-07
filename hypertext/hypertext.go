@@ -10,15 +10,15 @@ import (
 )
 
 type Markup struct {
-	tree []*html.Node
-	cached string
+	tree        []*html.Node
+	cached      string
 	cachedWidth int
 }
 
 type context struct {
 	preserveWhitespace bool
-	width int
-	links *[]string
+	width              int
+	links              *[]string
 }
 
 func NewMarkup(text string) (*Markup, []string, error) {
@@ -32,8 +32,8 @@ func NewMarkup(text string) (*Markup, []string, error) {
 	}
 	rendered, links := renderWithLinks(nodes, 80)
 	return &Markup{
-		tree: nodes,
-		cached: rendered,
+		tree:        nodes,
+		cached:      rendered,
 		cachedWidth: 80,
 	}, links, nil
 }
@@ -51,8 +51,8 @@ func (m *Markup) Render(width int) string {
 func renderWithLinks(nodes []*html.Node, width int) (string, []string) {
 	ctx := context{
 		preserveWhitespace: false,
-		width: width,
-		links: &[]string{},
+		width:              width,
+		links:              &[]string{},
 	}
 	output := ""
 	for _, current := range nodes {
@@ -268,7 +268,7 @@ func bulletedList(node *html.Node, ctx context) string {
 }
 
 func bad(node *html.Node, ctx context) string {
-	return style.Red("<" + node.Data + ">") + renderChildren(node, ctx) + style.Red("</" + node.Data + ">")
+	return style.Red("<"+node.Data+">") + renderChildren(node, ctx) + style.Red("</"+node.Data+">")
 }
 
 func getAttribute(name string, attributes []html.Attribute) string {

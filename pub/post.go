@@ -6,32 +6,32 @@ import (
 	"golang.org/x/exp/slices"
 	"mimicry/ansi"
 	"mimicry/client"
+	"mimicry/mime"
 	"mimicry/object"
 	"mimicry/style"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
-	"mimicry/mime"
 )
 
 type Post struct {
 	kind string
 	id   *url.URL
 
-	title        string
-	titleErr     error
-	body         object.Markup
-	bodyLinks	[]string
-	bodyErr      error
-	media         *Link
-	mediaErr      error
-	created      time.Time
-	createdErr   error
-	edited       time.Time
-	editedErr    error
-	parent       any
-	parentErr    error
+	title      string
+	titleErr   error
+	body       object.Markup
+	bodyLinks  []string
+	bodyErr    error
+	media      *Link
+	mediaErr   error
+	created    time.Time
+	createdErr error
+	edited     time.Time
+	editedErr  error
+	parent     any
+	parentErr  error
 
 	// just as body dies completely if members die,
 	// attachments dies completely if any member dies
@@ -209,7 +209,7 @@ func (p *Post) supplement(width int) (string, bool) {
 			output += style.Problem(err)
 			continue
 		}
-		output += style.LinkBlock(ansi.Wrap(alt, width-2), len(p.bodyLinks) + i + 1)
+		output += style.LinkBlock(ansi.Wrap(alt, width-2), len(p.bodyLinks)+i+1)
 	}
 	return output, true
 }
