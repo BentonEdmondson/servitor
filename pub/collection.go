@@ -110,9 +110,9 @@ func (c *Collection) harvestWithEmptyCount(amount uint, startingPoint uint, empt
 	/*
 		This is set at 3 because 3 seems to be the maximum amount that servers send, besides cases of infinite loops.
 		Mastodon sends 3 in the following case:
-			- the first of is the Collection itself, which has no items because it puts items in CollectionPages
+			- the first is the Collection itself, which has no items because the items are in CollectionPages
 			- the next page (the first CollectionPage) is empty because it only holds self-replies and there are none
-			- the next page (the second CollectionPage) is empty because it holds replies from others, which there are none
+			- the next page (the second CollectionPage) is empty because it holds replies from others and there are none
 	*/
 	if emptyCount > 3 {
 		return []Tangible{NewFailure(errors.New("refusing to read the next collection because >3 consecutive empty collections have been encountered"))}, nil, 0
