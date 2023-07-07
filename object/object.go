@@ -10,13 +10,15 @@ import (
 	"mimicry/hypertext"
 	"mimicry/markdown"
 	"mimicry/gemtext"
+	"math"
+	"mimicry/ansi"
 )
 
 type Object map[string]any
 
 var (
 	ErrKeyNotPresent = errors.New("key is not present")
-	ErrKeyWrongType  = errors.New("key is incorrect type")
+	ErrKeyWrongType  = errors.New("value is incorrect type")
 )
 
 /* Go doesn't allow generic methods */
@@ -40,16 +42,18 @@ func (o Object) GetString(key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	value = ansi.Scrub(value)
 	if value == "" {
 		return "", ErrKeyNotPresent
 	}
 	return value, nil
 }
 
-// TODO: should probably error for non-uints
 func (o Object) GetNumber(key string) (uint64, error) {
 	if number, err := getPrimitive[float64](o, key); err != nil {
 		return 0, err
+	} else if number != math.Trunc(number) {
+		return 0, fmt.Errorf("failed to extract \"%s\": value is not a non-integer number", key)
 	} else {
 		return uint64(number), nil
 	}
