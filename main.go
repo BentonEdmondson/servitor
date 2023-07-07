@@ -10,12 +10,9 @@ import (
 	"golang.org/x/term"
 )
 
-// TODO: clean up most panics
-
 func main() {
 	if len(os.Args) < 3 {
 		help()
-		return
 	}
 
 	config, err := config.Parse()
@@ -35,13 +32,6 @@ func main() {
 	}
 
 	state := ui.NewState(config, width, height, printRaw)
-	err = state.Subcommand(os.Args[1], os.Args[2])
-	if err != nil {
-		term.Restore(int(os.Stdin.Fd()), oldTerminal)
-		help()
-		return
-	}
-
 	go func() {
 		for {
 			time.Sleep(500 * time.Millisecond)
@@ -50,6 +40,15 @@ func main() {
 				panic(err)
 			}
 			state.SetWidthHeight(width, height)
+		}
+	}()
+
+	go func() {
+		/* Perhaps a bad design, but this holds its lock indefinitely on error, allowing for cleanup */
+		err = state.Subcommand(os.Args[1], os.Args[2])
+		if err != nil {
+			term.Restore(int(os.Stdin.Fd()), oldTerminal)
+			help()
 		}
 	}()
 
@@ -74,6 +73,38 @@ func printRaw(output string) {
 	}
 }
 
+const version = "0.0.0"
+
 func help() {
-	os.Stdout.WriteString("here's the help page\n")
+	os.Stdout.WriteString(
+"Servitor v" + version + `
+
+Commands:
+servitor open <url or @>
+servitor feed <feed name>
+
+Keybindings:
+  Navigation:
+  j - move down
+  k - move up
+  space - select the highlighted item
+  c - view the creator of the highlighted item
+  r - view the recipient of the highlighted item (e.g. the group it was posted to)
+  a - view the actor of the activity (e.g. view the retweeter of a retweet)
+  h - move back in your browser history
+  l - move forward in your browser history
+  g - move to the expanded item (i.e. move to the current OP)
+  ctrl+c - exit the program
+
+  Media:
+  p - open the highlighted user's profile picture
+  b - open the highlighted user's banner
+  o - open the content of a post itself (e.g. open the video associated with a video post)
+  number keys - open a link within the highlighted text
+
+  Commands:
+  :open <url or @>
+  :feed <feed name>
+`)
+	os.Exit(0)
 }

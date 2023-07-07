@@ -93,6 +93,10 @@ func (f *Feed) Contains(offset int) bool {
 	return f.index + offset < f.upperBound && f.index + offset> f.lowerBound
 }
 
-func (f *Feed) Location(offset int) int {
-	return f.index + offset
+func (f *Feed) IsParent(offset int) bool {
+	return f.index + offset < 0
+}
+
+func (f *Feed) IsChild(offset int) bool {
+	return f.index + offset > 0
 }

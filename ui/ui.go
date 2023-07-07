@@ -64,6 +64,12 @@ type State struct {
 }
 
 func (s *State) view() string {
+	const cursor = "┃ "
+
+	const parentConnector = "  │\n"
+	const childConnector = "\n"
+
+
 	if s.mode == loading {
 		return ansi.CenterVertically("", style.Color("  Loading…"), "", uint(s.height))
 	}
@@ -74,39 +80,46 @@ func (s *State) view() string {
 			continue
 		}
 		var serialized string
-		if s.h.Current().feed.Location(i) == 0 {
-			serialized = s.h.Current().feed.Get(i).String(s.width - 4)
-		} else if s.h.Current().feed.Location(i) > 0 {
+		if s.h.Current().feed.IsParent(i) {
+			serialized = s.h.Current().feed.Get(i).Preview(s.width - 4)
+		} else if s.h.Current().feed.IsChild(i) {
 			serialized = "→ " + ansi.Indent(s.h.Current().feed.Get(i).Preview(s.width-8), "  ", false)
 		} else {
-			serialized = s.h.Current().feed.Get(i).Preview(s.width - 4)
+			serialized = s.h.Current().feed.Get(i).String(s.width - 4)
 		}
 		if i == 0 {
-			center = ansi.Indent(serialized, "┃ ", true)
-		} else if i < 0 {
-			if top != "" {
-				top += "\n"
+			center = ansi.Indent(serialized, cursor, true)
+			if s.h.Current().feed.IsParent(i) {
+				bottom = parentConnector
+			} else {
+				bottom = childConnector
 			}
-			top += ansi.Indent(serialized+"\n", "  ", true)
+			continue
+		}
+		
+		serialized = ansi.Indent(serialized, "  ", true) + "\n"
+		if s.h.Current().feed.IsParent(i) {
+			serialized += parentConnector
 		} else {
-			if bottom != "" {
-				bottom += "\n"
-			}
-			bottom += ansi.Indent("\n"+serialized, "  ", true)
+			serialized += childConnector
+		}
+		if i < 0 {
+			top += serialized
+		} else {
+			bottom += serialized
 		}
 	}
-	if s.h.Current().loadingUp {
-		if top != "" {
-			top += "\n"
-		}
-		top = "  " + style.Color("Loading…") + "\n" + top
+	if s.h.Current().loadingUp && !s.h.Current().feed.Contains(-s.config.Context - 1) {
+		top = "\n  " + style.Color("Loading…") + "\n\n" + top
 	}
-	if s.h.Current().loadingDown {
-		if bottom != "" {
-			bottom += "\n"
-		}
-		bottom += "\n  " + style.Color("Loading…")
+	if s.h.Current().loadingDown && !s.h.Current().feed.Contains(s.config.Context + 1) {
+		bottom += "  " + style.Color("Loading…") + "\n"
 	}
+
+	/* Remove trailing newlines */
+	top = strings.TrimSuffix(top, "\n")
+	bottom = strings.TrimSuffix(bottom, "\n")
+
 	output := ansi.CenterVertically(top, center, bottom, uint(s.height))
 	
 	var footer string
@@ -136,7 +149,7 @@ func (s *State) Update(input byte) {
 	defer s.m.Unlock()
 
 	if s.mode == loading {
-		panic("inputs should not come through while loading, as all loading functions block the UI thread")
+		return
 	}
 
 	if input == escapeKey {
@@ -214,11 +227,13 @@ func (s *State) Update(input byte) {
 			}
 			if input == '.' {
 				s.openInternally(link)
+				return
 			}
 			if input == enterKey {
 				s.openExternally(link, mediaType)
+				return
 			}
-			return
+			
 		}
 		/* At this point we know input is a non-number, non-., non-enter */
 		s.mode = normal
@@ -227,7 +242,6 @@ func (s *State) Update(input byte) {
 
 	/* At this point we know we are in normal mode */
 	switch input {
-	// TODO: make feed stateful so all this logic is nicer. Functions will be MoveUp, MoveDown, MoveToCenter
 	case 'k': // up
 		s.h.Current().feed.MoveUp()
 		s.loadSurroundings()
@@ -325,7 +339,7 @@ func (s *State) switchTo(item any) {
 			feed: feed.CreateAndAppend(children),
 		})
 	default:
-		panic(fmt.Sprintf("unrecognized non-Tangible non-Container: %T", item))
+		panic("can't switch to non-Tangible non-Container")
 	}
 	s.mode = normal
 	s.buffer = ""
@@ -378,18 +392,26 @@ func (s *State) openUserInput(input string) {
 	s.mode = loading
 	s.buffer = ""
 	s.output(s.view())
-	result := pub.FetchUserInput(input)
-	s.switchTo(result)
-	s.output(s.view())
+	go func(){
+		result := pub.FetchUserInput(input)
+		s.m.Lock()
+		s.switchTo(result)
+		s.output(s.view())
+		s.m.Unlock()
+	}()
 }
 
 func (s *State) openInternally(input string) {
 	s.mode = loading
 	s.buffer = ""
 	s.output(s.view())
-	result := pub.New(input, nil)
-	s.switchTo(result)
-	s.output(s.view())
+	go func(){
+		result := pub.New(input, nil)
+		s.m.Lock()
+		s.switchTo(result)
+		s.output(s.view())
+		s.m.Unlock()
+	}()
 }
 
 func (s *State) openFeed(input string) {
@@ -405,9 +427,11 @@ func (s *State) openFeed(input string) {
 	s.mode = loading
 	s.buffer = ""
 	s.output(s.view())
-	result := splicer.NewSplicer(inputs)
-	s.switchTo(result)
-	s.output(s.view())
+	go func() {
+		result := splicer.NewSplicer(inputs)
+		s.switchTo(result)
+		s.output(s.view())
+	}()
 }
 
 func NewState(config *config.Config, width int, height int, output func(string)) *State {
@@ -425,8 +449,13 @@ func NewState(config *config.Config, width int, height int, output func(string))
 
 func (s *State) Subcommand(name, argument string) error {
 	s.m.Lock()
-	defer s.m.Unlock()
-	return s.subcommand(name, argument)
+	err := s.subcommand(name, argument)
+	if err != nil {
+		/* Here I hold the lock indefinitely intentionally, to stop the ui thread and allow main.go to do cleanup */
+		return err
+	}
+	s.m.Unlock()
+	return nil
 }
 
 func (s *State) subcommand(name, argument string) error {
