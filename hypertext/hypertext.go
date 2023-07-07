@@ -141,8 +141,10 @@ func renderNode(node *html.Node, ctx context) string {
 		return style.Underline(renderChildren(node, ctx))
 	case "mark":
 		return style.Highlight(renderChildren(node, ctx))
-	case "span", "li", "small":
+	case "span":
 		return renderChildren(node, ctx)
+	case "li":
+		return strings.Trim(renderChildren(node, ctx), " \n")
 	case "br":
 		return "\n"
 
@@ -185,7 +187,7 @@ func renderNode(node *html.Node, ctx context) string {
 		wrapped := situationalWrap(renderChildren(node, ctx), ctx)
 		return block(style.Header(wrapped, 6))
 	case "hr":
-		return block(style.Color(strings.Repeat("\u23AF", ctx.width)))
+		return block(strings.Repeat("\u23AF", ctx.width))
 
 	/*
 		The spec does not define the alt attribute for videos nor audio.
@@ -280,7 +282,6 @@ func getAttribute(name string, attributes []html.Attribute) string {
 
 func situationalWrap(text string, ctx context) string {
 	if ctx.preserveWhitespace {
-		// TODO: I should probably change DumbWrap to truncate (which just lets it go off the end of the screen)
 		return ansi.DumbWrap(text, ctx.width)
 	}
 
