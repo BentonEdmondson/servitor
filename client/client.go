@@ -39,29 +39,28 @@ func FetchUnknown(input any, source *url.URL) (object.Object, *url.URL, error) {
 	id, err := obj.GetURL("id")
 	if errors.Is(err, object.ErrKeyNotPresent) {
 		id = nil
-		err = nil
 	} else if err != nil {
 		return nil, nil, err
 	}
-
-	if id != nil {
-		if source == nil {
-			obj, source, err = FetchURL(id)
-			if err != nil {
-				return nil, nil, err
-			}
-		} else if (source.Host != id.Host) || len(obj) <= 2 {
-			obj, source, err = FetchURL(id)
-			if err != nil {
-				return nil, nil, err
-			}
+	/* Refetch if necessary */
+	if id != nil && (source == nil || source.Host != id.Host || len(obj) <= 2) {
+		obj, source, err = FetchURL(id)
+		if err != nil {
+			return nil, nil, err
+		}
+		/* Verify that now the id matches the source it came from */
+		id, err = obj.GetURL("id")
+		if errors.Is(err, object.ErrKeyNotPresent) {
+			id = nil
+		} else if err != nil {
+			return nil, nil, err
+		}
+		if id != nil && source.Host != id.Host {
+			return nil, nil, errors.New("received response with forged ID")
 		}
 	}
 
-	// TODO: need to recheck that the id is now accurate, return
-	// error if not
-
-	return obj, id, err
+	return obj, id, nil
 }
 
 var group singleflight.Group
