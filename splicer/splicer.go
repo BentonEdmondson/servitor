@@ -5,6 +5,12 @@ import (
 	"sync"
 )
 
+/*
+	TODO:
+	This can be optimized by storing more than 1 element from each container,
+	and then refilling elements of the containers in parallel.
+*/
+
 type Splicer []struct {
 	basepoint uint
 	page      pub.Container
@@ -22,6 +28,7 @@ func (s Splicer) Harvest(quantity uint, startingPoint uint) ([]pub.Tangible, pub
 	for i := 0; i < int(quantity); i++ {
 		harvested := clone.microharvest()
 		if harvested == nil {
+			clone = nil
 			break
 		}
 		output = append(output, harvested)
@@ -66,6 +73,8 @@ func (s Splicer) microharvest() pub.Tangible {
 		elements, s[mostRecentIndex].page, s[mostRecentIndex].basepoint = s[mostRecentIndex].page.Harvest(1, s[mostRecentIndex].basepoint)
 		if len(elements) > 1 {
 			panic("harvest returned more that one element when I only asked for one")
+		} else if len(elements) == 0 {
+			s[mostRecentIndex].element = nil
 		} else {
 			s[mostRecentIndex].element = elements[0]
 		}
@@ -100,6 +109,8 @@ func NewSplicer(inputs []string) *Splicer {
 				elements, s[i].page, s[i].basepoint = children.Harvest(1, 0)
 				if len(elements) > 1 {
 					panic("harvest returned more that one element when I only asked for one")
+				} else if len(elements) == 0 {
+					s[i].element = nil
 				} else {
 					s[i].element = elements[0]
 				}
