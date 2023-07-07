@@ -2,7 +2,6 @@ package ansi
 
 import (
 	"fmt"
-	"mimicry/util"
 	"testing"
 )
 
@@ -103,11 +102,15 @@ func TestWrap(t *testing.T) {
 
 	for _, test := range tests {
 		output := Wrap(test.Input, test.Limit)
-		util.AssertEqual(test.Expected, output, t)
+		if test.Expected != output {
+			t.Fatalf("expected %s but got %s", test.Expected, output)
+		}
 
 		// Test that `Wrap` is idempotent
 		identical := Wrap(test.Expected, test.Limit)
-		util.AssertEqual(test.Expected, identical, t)
+		if test.Expected != identical {
+			t.Fatalf("expected %s but got %s", test.Expected, identical)
+		}
 	}
 }
 
@@ -125,7 +128,9 @@ func TestCodeBlock(t *testing.T) {
   test  
   everyt
   hing  `
-	util.AssertEqual(expected, indented, t)
+	if expected != indented {
+		t.Fatalf("expected %s but got %s", expected, indented)
+	}
 
 	fmt.Println("This should look like a nice, indented code block:")
 	styled := Indent(Apply(padded, "48;2;75;75;75"), "  ", true)
@@ -187,7 +192,10 @@ func TestSnip(t *testing.T) {
 
 	for _, test := range tests {
 		output := Snip(test.Input, test.Width, test.Height, "…")
-		util.AssertEqual(test.Expected, output, t)
+		
+		if test.Expected != output {
+			t.Fatalf("expected %s but got %s", test.Expected, output)
+		}
 	}
 }
 
