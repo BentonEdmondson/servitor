@@ -92,7 +92,6 @@ func (a *Actor) Children() Container {
 	}
 }
 
-// TODO: here is where I'd put forgery errors in
 func (a *Actor) Name() string {
 	var output string
 	if a.nameErr == nil {
@@ -181,7 +180,6 @@ func (a *Actor) String(width int) string {
 func (a *Actor) Preview(width int) string {
 	output := a.header(width)
 
-	// TODO this needs to be truncated
 	if body, present := a.center(width); present {
 		output += "\n" + ansi.Snip(body, width, 4, style.Color("\u2026"))
 	}

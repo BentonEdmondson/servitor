@@ -12,7 +12,7 @@ type Failure struct {
 
 func NewFailure(err error) *Failure {
 	if err == nil {
-		panic("do not create a failure with a nil error")
+		panic("can't create Failure with a nil error")
 	}
 	return &Failure{err}
 }

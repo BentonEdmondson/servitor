@@ -84,7 +84,7 @@ func (a *Activity) header(width int) string {
 	case "Dislike":
 		output += "downvoted"
 	default:
-		panic("encountered unrecognized Actor type: " + a.kind)
+		panic("encountered unrecognized Activity type: " + a.kind)
 	}
 
 	output += ":\n"
