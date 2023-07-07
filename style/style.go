@@ -95,7 +95,7 @@ func superscript(value int) string {
 		case '8': return '\u2078'
 		case '9': return '\u2079'
 		default:
-			panic("cannot superscript non-digit")
+			panic("can't superscript non-digit")
 		}
 	}, text)
 }
