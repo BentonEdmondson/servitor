@@ -164,7 +164,8 @@ func (s *State) Update(input byte) {
 			s.output(s.view())
 			return
 		}
-		s.buffer = s.buffer[:len(s.buffer)-1]
+		bufferRunes := []rune(s.buffer)
+		s.buffer = string(bufferRunes[:len(bufferRunes)-1])
 		if s.buffer == "" && s.mode == selection {
 			s.mode = normal
 		}
@@ -177,7 +178,7 @@ func (s *State) Update(input byte) {
 			if args := strings.SplitN(s.buffer, " ", 2); len(args) == 2 {
 				err := s.subcommand(args[0], args[1])
 				if err != nil {
-					s.buffer = "Failed to run command: " + ansi.Squash(err.Error())
+					s.buffer = "Failed to run command: " + err.Error()
 					s.mode = problem
 					s.output(s.view())
 					s.buffer = ""
@@ -235,6 +236,11 @@ func (s *State) Update(input byte) {
 
 		}
 		/* At this point we know input is a non-number, non-., non-enter */
+		s.mode = normal
+		s.buffer = ""
+	}
+
+	if s.mode == opening {
 		s.mode = normal
 		s.buffer = ""
 	}
@@ -503,7 +509,8 @@ func (s *State) openExternally(link string, mediaType *mime.MediaType) {
 	}
 
 	go func() {
-		err := cmd.Run()
+		outputBytes, err := cmd.CombinedOutput()
+		output := string(outputBytes)
 
 		s.m.Lock()
 		defer s.m.Unlock()
@@ -514,7 +521,7 @@ func (s *State) openExternally(link string, mediaType *mime.MediaType) {
 
 		if err != nil {
 			s.mode = problem
-			s.buffer = "Failed to open link: " + ansi.Squash(err.Error())
+			s.buffer = "Failed to open link: " + output
 			s.output(s.view())
 			s.mode = normal
 			s.buffer = ""
