@@ -72,7 +72,7 @@ func NewPostFromObject(o object.Object, id *url.URL) (*Post, error) {
 	p.edited, p.editedErr = o.GetTime("updated")
 	p.parent, p.parentErr = o.GetAny("inReplyTo")
 
-	if p.kind == "Image" || p.kind == "Audio" || p.kind == "Video" {
+	if p.kind == "Audio" || p.kind == "Video" || p.kind == "Image" {
 		p.media, p.mediaErr = getBestLinkShorthand(o, "url", strings.ToLower(p.kind))
 	} else {
 		p.media, p.mediaErr = getFirstLinkShorthand(o, "url")

@@ -7,6 +7,7 @@ import (
 	"servitor/mime"
 	"servitor/object"
 	"net/url"
+	"strings"
 )
 
 type Link struct {
@@ -152,11 +153,17 @@ func (l *Link) SelectWithDefaultMediaType(defaultMediaType *mime.MediaType) (str
 	if l.uriErr != nil {
 		return "", nil, false
 	}
+
 	/* I suppress this error here because it is shown in the alt text */
-	if l.mediaTypeErr != nil {
-		return l.uri.String(), defaultMediaType, true
+	if l.mediaTypeErr == nil {
+		return l.uri.String(), l.mediaType, true
 	}
-	return l.uri.String(), l.mediaType, true
+
+	if l.kind == "Audio" || l.kind == "Video" || l.kind == "Image" {
+		return l.uri.String(), mime.UnknownSubtype(strings.ToLower(l.kind)), true
+	}
+
+	return l.uri.String(), defaultMediaType, true
 }
 
 func SelectFirstLink(links []*Link) (*Link, error) {
