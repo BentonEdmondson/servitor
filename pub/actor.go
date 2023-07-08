@@ -166,12 +166,16 @@ func (a *Actor) footer(width int) (string, bool) {
 func (a *Actor) String(width int) string {
 	output := a.header(width)
 
-	if body, present := a.center(width - 4); present {
+	body, bodyPresent := a.center(width - 4)
+	if bodyPresent {
 		output += "\n\n" + ansi.Indent(body, "  ", true)
 	}
 
 	if footer, present := a.footer(width); present {
-		output += "\n\n" + footer
+		if bodyPresent {
+			output += "\n"
+		}
+		output += "\n" + footer
 	}
 
 	return output
