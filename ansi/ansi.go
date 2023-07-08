@@ -312,14 +312,16 @@ func ReplaceLastLine(original, replacement string) string {
 }
 
 func SetLength(text string, length int, ellipsis string) string {
+	text = Squash(Scrub(text))
+	runes := []rune(text)
 	if length == 0 {
 		return ""
 	}
-	if len(text) > length {
-		return text[:length-1] + ellipsis
+	if len(runes) > length {
+		return string(runes[:length-1]) + ellipsis
 	}
-	if len(text) < length {
-		return text + strings.Repeat(" ", length-len(text))
+	if len(runes) < length {
+		return string(runes) + strings.Repeat(" ", length-len(runes))
 	}
 	return text
 }
