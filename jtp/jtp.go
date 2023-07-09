@@ -12,11 +12,11 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	"time"
+	"servitor/config"
 )
 
 var dialer = &net.Dialer{
-	Timeout: 5 * time.Second,
+	Timeout: config.Parsed.Network.Timeout,
 }
 
 type bundle struct {

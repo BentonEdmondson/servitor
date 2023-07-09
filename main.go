@@ -1,7 +1,6 @@
 package main
 
 import (
-	"servitor/config"
 	"servitor/ui"
 	"os"
 	"strings"
@@ -13,12 +12,7 @@ import (
 func main() {
 	if len(os.Args) < 3 {
 		help()
-	}
-
-	config, err := config.Parse()
-	if err != nil {
-		os.Stderr.WriteString(err.Error() + "\n")
-		return
+		os.Exit(1)
 	}
 
 	oldTerminal, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -31,7 +25,7 @@ func main() {
 		panic(err)
 	}
 
-	state := ui.NewState(config, width, height, printRaw)
+	state := ui.NewState(width, height, printRaw)
 	go func() {
 		for {
 			time.Sleep(500 * time.Millisecond)
@@ -49,6 +43,8 @@ func main() {
 		if err != nil {
 			term.Restore(int(os.Stdin.Fd()), oldTerminal)
 			help()
+			os.Stdout.WriteString("\n" + err.Error() + "\n")
+			os.Exit(1)
 		}
 	}()
 
@@ -106,5 +102,4 @@ Keybindings:
   :open <url or @>
   :feed <feed name>
 `)
-	os.Exit(0)
 }

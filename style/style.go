@@ -1,19 +1,19 @@
 package style
 
 import (
-	"fmt"
 	"servitor/ansi"
 	"strconv"
 	"strings"
+	"servitor/config"
 )
 
-func background(text string, r uint8, g uint8, b uint8) string {
-	prefix := fmt.Sprintf("48;2;%d;%d;%d", r, g, b)
+func background(text string, rgb string) string {
+	prefix := "48;2;" + rgb
 	return ansi.Apply(text, prefix)
 }
 
-func foreground(text string, r uint8, g uint8, b uint8) string {
-	prefix := fmt.Sprintf("38;2;%d;%d;%d", r, g, b)
+func foreground(text string, rgb string) string {
+	prefix := "38;2;" + rgb
 	return ansi.Apply(text, prefix)
 }
 
@@ -34,15 +34,15 @@ func Italic(text string) string {
 }
 
 func Code(text string) string {
-	return background(text, 75, 75, 75)
+	return background(text, config.Parsed.Style.Colors.Code)
 }
 
 func Highlight(text string) string {
-	return background(text, 13, 125, 0)
+	return background(text, config.Parsed.Style.Colors.Highlight)
 }
 
 func Color(text string) string {
-	return foreground(text, 164, 245, 155)
+	return foreground(text, config.Parsed.Style.Colors.Primary)
 }
 
 func Problem(issue error) string {
@@ -50,7 +50,7 @@ func Problem(issue error) string {
 }
 
 func Red(text string) string {
-	return foreground(text, 156, 53, 53)
+	return foreground(text, config.Parsed.Style.Colors.Error)
 }
 
 func Link(text string, number int) string {

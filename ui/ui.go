@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"errors"
 )
 
 /*
@@ -57,8 +58,6 @@ type State struct {
 	height int
 	output func(string)
 
-	config *config.Config
-
 	mode   int
 	buffer string
 }
@@ -74,7 +73,7 @@ func (s *State) view() string {
 	}
 
 	var top, center, bottom string
-	for i := -s.config.Context; i <= s.config.Context; i++ {
+	for i := -config.Parsed.Style.Context; i <= config.Parsed.Style.Context; i++ {
 		if !s.h.Current().feed.Contains(i) {
 			continue
 		}
@@ -108,10 +107,10 @@ func (s *State) view() string {
 			bottom += serialized
 		}
 	}
-	if s.h.Current().loadingUp && !s.h.Current().feed.Contains(-s.config.Context-1) {
+	if s.h.Current().loadingUp && !s.h.Current().feed.Contains(-config.Parsed.Style.Context-1) {
 		top = "\n  " + style.Color("Loading…") + "\n\n" + top
 	}
-	if s.h.Current().loadingDown && !s.h.Current().feed.Contains(s.config.Context+1) {
+	if s.h.Current().loadingDown && !s.h.Current().feed.Contains(config.Parsed.Style.Context+1) {
 		bottom += "  " + style.Color("Loading…") + "\n"
 	}
 
@@ -339,7 +338,7 @@ func (s *State) switchTo(item any) {
 			s.buffer = ""
 			s.output(s.view())
 		}
-		children, nextCollection, newBasepoint := narrowed.Harvest(uint(s.config.Context), 0)
+		children, nextCollection, newBasepoint := narrowed.Harvest(uint(config.Parsed.Style.Context), 0)
 		s.h.Add(&Page{
 			basepoint: newBasepoint,
 			children:  nextCollection,
@@ -366,7 +365,7 @@ func (s *State) SetWidthHeight(width int, height int) {
 
 func (s *State) loadSurroundings() {
 	page := s.h.Current()
-	context := s.config.Context
+	context := config.Parsed.Style.Context
 	if !page.loadingUp && !page.feed.Contains(-context) && page.frontier != nil {
 		page.loadingUp = true
 		go func() {
@@ -422,7 +421,7 @@ func (s *State) openInternally(input string) {
 }
 
 func (s *State) openFeed(input string) {
-	inputs, present := s.config.Feeds[input]
+	inputs, present := config.Parsed.Feeds[input]
 	if !present {
 		s.mode = problem
 		s.buffer = "Failed to open feed: " + input + " is not a known feed"
@@ -441,10 +440,9 @@ func (s *State) openFeed(input string) {
 	}()
 }
 
-func NewState(config *config.Config, width int, height int, output func(string)) *State {
+func NewState(width int, height int, output func(string)) *State {
 	s := &State{
 		h:      history.History[*Page]{},
-		config: config,
 		width:  width,
 		height: height,
 		output: output,
@@ -456,6 +454,11 @@ func NewState(config *config.Config, width int, height int, output func(string))
 
 func (s *State) Subcommand(name, argument string) error {
 	s.m.Lock()
+	if name == "feed" {
+		if _, present := config.Parsed.Feeds[argument]; !present {
+			return errors.New("failed to open feed: " + argument + " is not a known feed")
+		}
+	}
 	err := s.subcommand(name, argument)
 	if err != nil {
 		/* Here I hold the lock indefinitely intentionally, to stop the ui thread and allow main.go to do cleanup */
@@ -482,8 +485,8 @@ func (s *State) openExternally(link string, mediaType *mime.MediaType) {
 	s.buffer = link
 	s.output(s.view())
 
-	command := make([]string, len(s.config.MediaHook))
-	copy(command, s.config.MediaHook)
+	command := make([]string, len(config.Parsed.Media.Hook))
+	copy(command, config.Parsed.Media.Hook)
 
 	foundPercentU := false
 	for i, field := range command {

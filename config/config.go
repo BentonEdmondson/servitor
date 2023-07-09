@@ -5,33 +5,62 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"os"
+	"strings"
+	"strconv"
+	"time"
 )
 
 type Config struct {
-	Context   int      `toml:"context"`
-	Timeout   int      `toml:"timeout"`
-	Feeds     feeds    `toml:"feeds"`
-	Algos     algos    `toml:"algos"`
-	MediaHook []string `toml:"media_hook"`
+	Feeds     map[string][]string    `toml:"feeds"`
+	Media	  struct {
+		Hook []string `toml:"hook"`
+	}	`toml:"media"`
+	Style	  struct {
+		Context int `toml:"context"`
+		Colors struct {
+			Primary string `toml:"primary"`
+			Error string `toml:"error"`
+			Highlight string `toml:"highlight"`
+			Code string `toml:"code"`
+		} `toml:"colors"`
+	} `toml:"style"`
+	Network   struct {
+		Timeout time.Duration `toml:"timeout_seconds"`
+	} `toml:"network"`
 }
 
-type feeds = map[string][]string
-type algos = map[string]struct {
-	Server string `toml:"server"`
-	Query  string `toml:"query"`
-}
+var Parsed *Config = nil
 
-func Parse() (*Config, error) {
-	/* Default values */
-	config := &Config{
-		Context:   5,
-		Timeout:   10,
-		Feeds:     feeds{},
-		Algos:     algos{},
-		MediaHook: []string{"xdg-open", "%url"},
-	}
-
+/* I use the init function here because everyone who imports config needs
+   the config to be parsed before starting, and the config should only be parsed once.
+   It seems like a good use case. It is slightly ugly to have printing/exiting
+   code this deep in the program, and for it to not be referenced at the top level,
+   but ultimately it's not a big deal. */
+func init() {
+	var err error
 	location := location()
+	if Parsed, err = parse(location); err != nil {
+		os.Stderr.WriteString(fmt.Errorf("failed to parse %s: %w", location, err).Error() + "\n")
+		os.Exit(1)
+	}
+	if err = normalize(Parsed); err != nil {
+		os.Stderr.WriteString(fmt.Errorf("failed to parse %s: %w", location, err).Error() + "\n")
+		os.Exit(1)
+	}
+}
+
+func parse(location string) (*Config, error) {
+	/* Default values */
+	config := &Config{}
+	config.Feeds = map[string][]string{}
+	config.Media.Hook = []string{"xdg-open", "%url"}
+	config.Style.Context = 5
+	config.Style.Colors.Primary = "#A4f59b"
+	config.Style.Colors.Error = "#9c3535"
+	config.Style.Colors.Highlight = "#0d7d00"
+	config.Style.Colors.Code = "#4b4b4b"
+	config.Network.Timeout = 10
+
 	if location == "" {
 		return config, nil
 	}
@@ -45,7 +74,7 @@ func Parse() (*Config, error) {
 	}
 
 	if undecoded := metadata.Undecoded(); len(undecoded) != 0 {
-		return nil, fmt.Errorf("config file %s contained unrecognized keys: %v", location, undecoded)
+		return nil, fmt.Errorf("contains unrecognized key(s): %v", undecoded)
 	}
 
 	return config, nil
@@ -61,4 +90,53 @@ func location() string {
 	}
 
 	return ""
+}
+
+func hexToAnsi(text string) (string, error) {
+	errNotAHexCode := errors.New("must be a hex code of the form '#fcba03'")
+
+	if !strings.HasPrefix(text, "#") {
+		return "", errNotAHexCode
+	}
+
+	if len(text) != 7 {
+		return "", errNotAHexCode
+	}
+
+	r, err := strconv.ParseUint(text[1:3], 16, 0)
+	if err != nil {
+		return "", errNotAHexCode
+	}
+	g, err := strconv.ParseUint(text[3:5], 16, 0)
+	if err != nil {
+		return "", errNotAHexCode
+	}
+	b, err := strconv.ParseUint(text[5:7], 16, 0)
+	if err != nil {
+		return "", errNotAHexCode
+	}
+
+	return strconv.Itoa(int(r)) + ";" + strconv.Itoa(int(g)) + ";" + strconv.Itoa(int(b)), nil
+}
+
+func normalize(config *Config) error {
+	var err error
+	config.Style.Colors.Primary, err = hexToAnsi(config.Style.Colors.Primary)
+	if err != nil {
+		return fmt.Errorf("key style.colors.primary is invalid: %w", err)
+	}
+	config.Style.Colors.Error, err = hexToAnsi(config.Style.Colors.Error)
+	if err != nil {
+		return fmt.Errorf("key style.colors.error is invalid: %w", err)
+	}
+	config.Style.Colors.Highlight, err = hexToAnsi(config.Style.Colors.Highlight)
+	if err != nil {
+		return fmt.Errorf("key style.colors.highlight is invalid: %w", err)
+	}
+	config.Style.Colors.Code, err = hexToAnsi(config.Style.Colors.Code)
+	if err != nil {
+		return fmt.Errorf("key style.colors.code is invalid: %w", err)
+	}
+	config.Network.Timeout *= time.Second
+	return nil
 }
