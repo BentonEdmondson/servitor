@@ -8,8 +8,6 @@ import (
 type Any any
 
 type Tangible interface {
-	Kind() string
-
 	String(width int) string
 	Preview(width int) string
 	Parents(quantity uint) ([]Tangible, Tangible)

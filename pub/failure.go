@@ -4,6 +4,7 @@ import (
 	"servitor/mime"
 	"servitor/style"
 	"time"
+	"servitor/ansi"
 )
 
 type Failure struct {
@@ -17,14 +18,12 @@ func NewFailure(err error) *Failure {
 	return &Failure{err}
 }
 
-func (f *Failure) Kind() string { return "failure" }
-
 func (f *Failure) Name() string {
 	return style.Problem(f.message)
 }
 
 func (f *Failure) Preview(width int) string {
-	return f.Name()
+	return ansi.Wrap(f.Name(), width)
 }
 
 func (f *Failure) String(width int) string {

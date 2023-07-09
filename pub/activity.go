@@ -58,10 +58,6 @@ func NewActivityFromObject(o object.Object, id *url.URL) (*Activity, error) {
 	return a, nil
 }
 
-func (a *Activity) Kind() string {
-	return a.kind
-}
-
 func (a *Activity) header(width int) string {
 	if a.kind == "Create" {
 		return ""

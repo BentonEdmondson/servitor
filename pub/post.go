@@ -94,10 +94,6 @@ func NewPostFromObject(o object.Object, id *url.URL) (*Post, error) {
 	return p, nil
 }
 
-func (p *Post) Kind() string {
-	return p.kind
-}
-
 func (p *Post) Children() Container {
 	/* the if is necessary because my understanding is
 	the first nil is a (*Collection)(nil) whereas

@@ -73,10 +73,6 @@ func NewActorFromObject(o object.Object, id *url.URL) (*Actor, error) {
 	return a, nil
 }
 
-func (a *Actor) Kind() string {
-	return a.kind
-}
-
 func (a *Actor) Parents(quantity uint) ([]Tangible, Tangible) {
 	return []Tangible{}, nil
 }
