@@ -338,7 +338,7 @@ func (s *State) switchTo(item any) {
 			s.buffer = ""
 			s.output(s.view())
 		}
-		children, nextCollection, newBasepoint := narrowed.Harvest(uint(config.Parsed.Style.Context), 0)
+		children, nextCollection, newBasepoint := narrowed.Harvest(uint(config.Parsed.Style.Context + 1), 0)
 		s.h.Add(&Page{
 			basepoint: newBasepoint,
 			children:  nextCollection,
