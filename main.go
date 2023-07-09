@@ -28,7 +28,7 @@ func main() {
 	state := ui.NewState(width, height, printRaw)
 	go func() {
 		for {
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(25 * time.Millisecond)
 			width, height, err := term.GetSize(int(os.Stdin.Fd()))
 			if err != nil {
 				panic(err)
