@@ -130,6 +130,14 @@ func (a *Activity) Actor() Tangible {
 	return a.actor
 }
 
+func (a *Activity) ActorIdentifier() *url.URL {
+	if a.actorErr != nil {
+		return nil
+	}
+
+	return a.actor.Identifier()
+}
+
 func (a *Activity) Target() Tangible {
 	return a.target
 }

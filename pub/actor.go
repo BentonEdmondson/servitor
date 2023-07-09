@@ -69,7 +69,22 @@ func NewActorFromObject(o object.Object, id *url.URL) (*Actor, error) {
 	a.pfp, a.pfpErr = getBestLink(o, "icon", "image")
 	a.banner, a.bannerErr = getBestLink(o, "image", "image")
 
-	a.posts, a.postsErr = getCollection(o, "outbox", a.id)
+	a.posts, a.postsErr = getCollection(o, "outbox", a.id, func(input any, source *url.URL) Tangible {
+		activity, err := NewActivity(input, source)
+		if err != nil {
+			return NewFailure(err)
+		}
+
+		if id == nil {
+			return NewFailure(errors.New("activity was performed by a different actor (this actor has no identifier)"))
+		}
+
+		if activity.ActorIdentifier() == nil || activity.ActorIdentifier().String() != id.String() {
+			return NewFailure(errors.New("activity was performed by a different actor"))
+		}
+
+		return activity
+	})
 	return a, nil
 }
 
@@ -197,6 +212,10 @@ func (a *Actor) Timestamp() time.Time {
 	} else {
 		return a.joined
 	}
+}
+
+func (a *Actor) Identifier() *url.URL {
+	return a.id
 }
 
 func (a *Actor) Banner() (string, *mime.MediaType, bool) {

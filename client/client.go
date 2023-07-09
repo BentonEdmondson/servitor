@@ -43,7 +43,7 @@ func FetchUnknown(input any, source *url.URL) (object.Object, *url.URL, error) {
 		return nil, nil, err
 	}
 	/* Refetch if necessary */
-	if id != nil && (source == nil || source.Host != id.Host || len(obj) <= 2) {
+	if id != nil && (source == nil || source.String() != id.String() || len(obj) <= 2) {
 		obj, source, err = FetchURL(id)
 		if err != nil {
 			return nil, nil, err
@@ -55,8 +55,8 @@ func FetchUnknown(input any, source *url.URL) (object.Object, *url.URL, error) {
 		} else if err != nil {
 			return nil, nil, err
 		}
-		if id != nil && source.Host != id.Host {
-			return nil, nil, errors.New("received response with forged ID")
+		if id != nil && source.String() != id.String() {
+			return nil, nil, errors.New("received response with forged identifier")
 		}
 	}
 

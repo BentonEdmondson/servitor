@@ -85,13 +85,13 @@ func getPostOrActor(o object.Object, key string, source *url.URL) Tangible {
 	return fetched
 }
 
-func getCollection(o object.Object, key string, source *url.URL) (*Collection, error) {
+func getCollection(o object.Object, key string, source *url.URL, construct func(any, *url.URL) Tangible) (*Collection, error) {
 	reference, err := o.GetAny(key)
 	if err != nil {
 		return nil, err
 	}
 
-	fetched, err := NewCollection(reference, source)
+	fetched, err := NewCollection(reference, source, construct)
 	if err != nil {
 		return nil, err
 	}
@@ -111,12 +111,21 @@ func getActor(o object.Object, key string, source *url.URL) (*Actor, error) {
 	return fetched, nil
 }
 
+func getAndFetchUnkown(o object.Object, key string, source *url.URL) (object.Object, *url.URL, error) {
+	reference, err := o.GetAny(key)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return client.FetchUnknown(reference, source)
+}
+
 func NewTangible(input any, source *url.URL) Tangible {
 	fetched := New(input, source)
 	if tangible, ok := fetched.(Tangible); ok {
 		return tangible
 	}
-	return NewFailure(errors.New("item is non-Tangible"))
+	return NewFailure(errors.New("item is a collection"))
 }
 
 func New(input any, source *url.URL) any {
@@ -148,7 +157,7 @@ func New(input any, source *url.URL) any {
 		return NewFailure(err)
 	}
 
-	result, err = NewCollectionFromObject(o, id)
+	result, err = NewCollectionFromObject(o, id, NewTangible)
 	if err == nil {
 		return result
 	} else if !errors.Is(err, ErrWrongType) {

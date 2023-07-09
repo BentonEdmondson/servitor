@@ -38,17 +38,19 @@ type Collection struct {
 
 	size    uint64
 	sizeErr error
+
+	construct func(any, *url.URL,) Tangible
 }
 
-func NewCollection(input any, source *url.URL) (*Collection, error) {
+func NewCollection(input any, source *url.URL, construct func(any, *url.URL) Tangible) (*Collection, error) {
 	o, id, err := client.FetchUnknown(input, source)
 	if err != nil {
 		return nil, err
 	}
-	return NewCollectionFromObject(o, id)
+	return NewCollectionFromObject(o, id, construct)
 }
 
-func NewCollectionFromObject(o object.Object, id *url.URL) (*Collection, error) {
+func NewCollectionFromObject(o object.Object, id *url.URL, construct func(any, *url.URL) Tangible) (*Collection, error) {
 	c := &Collection{}
 	c.id = id
 	var err error
@@ -61,6 +63,8 @@ func NewCollectionFromObject(o object.Object, id *url.URL) (*Collection, error) 
 	}, c.kind) {
 		return nil, fmt.Errorf("%w: %s is not a Collection", ErrWrongType, c.kind)
 	}
+
+	c.construct = construct
 
 	if c.kind == "Collection" || c.kind == "CollectionPage" {
 		c.elements, c.elementsErr = o.GetList("items")
@@ -137,7 +141,7 @@ func (c *Collection) harvestWithEmptyCount(amount uint, startingPoint uint, empt
 		i := i
 		wg.Add(1)
 		go func() {
-			fromThisPage[i] = NewTangible(c.elements[i+startingPoint], c.id)
+			fromThisPage[i] = c.construct(c.elements[i+startingPoint], c.id)
 			wg.Done()
 		}()
 	}
@@ -150,7 +154,7 @@ func (c *Collection) harvestWithEmptyCount(amount uint, startingPoint uint, empt
 			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{}, nil, 0
 		} else if c.nextErr != nil {
 			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{NewFailure(c.nextErr)}, nil, 0
-		} else if next, err := NewCollection(c.next, c.id); err != nil {
+		} else if next, err := NewCollection(c.next, c.id, c.construct); err != nil {
 			fromLaterPages, nextCollection, nextStartingPoint = []Tangible{NewFailure(err)}, nil, 0
 		} else {
 			fromLaterPages, nextCollection, nextStartingPoint = next.harvestWithEmptyCount(amount-amountFromThisPage, 0, emptyCount)
@@ -160,6 +164,15 @@ func (c *Collection) harvestWithEmptyCount(amount uint, startingPoint uint, empt
 	}()
 
 	wg.Wait()
+
+	n := 0
+	for _, element := range fromThisPage {
+		if element != nil {
+			fromThisPage[n] = element
+			n += 1
+		}
+	}
+	fromThisPage = fromThisPage[:n]
 
 	return append(fromThisPage, fromLaterPages...), nextCollection, nextStartingPoint
 }

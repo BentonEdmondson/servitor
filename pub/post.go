@@ -30,7 +30,8 @@ type Post struct {
 	createdErr error
 	edited     time.Time
 	editedErr  error
-	parent     any
+	parentObject     object.Object
+	parentIdentifier *url.URL
 	parentErr  error
 
 	// just as body dies completely if members die,
@@ -60,6 +61,10 @@ func NewPostFromObject(o object.Object, id *url.URL) (*Post, error) {
 		return nil, err
 	}
 
+	if p.kind == "Tombstone" {
+		return nil, errors.New("post was deleted")
+	}
+
 	if !slices.Contains([]string{
 		"Article", "Audio", "Document", "Image", "Note", "Page", "Video",
 	}, p.kind) {
@@ -70,7 +75,7 @@ func NewPostFromObject(o object.Object, id *url.URL) (*Post, error) {
 	p.body, p.bodyLinks, p.bodyErr = o.GetMarkup("content", "mediaType")
 	p.created, p.createdErr = o.GetTime("published")
 	p.edited, p.editedErr = o.GetTime("updated")
-	p.parent, p.parentErr = o.GetAny("inReplyTo")
+	p.parentObject, p.parentIdentifier, p.parentErr = getAndFetchUnkown(o, "inReplyTo", p.id)
 
 	if p.kind == "Audio" || p.kind == "Video" || p.kind == "Image" {
 		p.media, p.mediaErr = getBestLinkShorthand(o, "url", strings.ToLower(p.kind))
@@ -83,14 +88,47 @@ func NewPostFromObject(o object.Object, id *url.URL) (*Post, error) {
 	go func() { p.creators = getActors(o, "attributedTo", p.id); wg.Done() }()
 	go func() { p.recipients = getActors(o, "audience", p.id); wg.Done() }()
 	go func() { p.attachments, p.attachmentsErr = getLinks(o, "attachment"); wg.Done() }()
+
+	constructComment := func(input any, source *url.URL) Tangible {
+		comment, err := NewPost(input, source)
+		if err != nil {
+			return NewFailure(err)
+		}
+
+		if id == nil {
+			return NewFailure(errors.New("comment does not reference this parent (parent lacks an identifier)"))
+		}
+
+		if comment.ParentIdentifier() == nil || comment.ParentIdentifier().String() != id.String() {
+			return NewFailure(errors.New("comment does not reference this parent"))
+		}
+
+		return comment
+	}
+
 	go func() {
-		p.comments, p.commentsErr = getCollection(o, "replies", p.id)
+		p.comments, p.commentsErr = getCollection(o, "replies", p.id, constructComment)
 		if errors.Is(p.commentsErr, object.ErrKeyNotPresent) {
-			p.comments, p.commentsErr = getCollection(o, "comments", p.id)
+			p.comments, p.commentsErr = getCollection(o, "comments", p.id, constructComment)
 		}
 		wg.Done()
 	}()
 	wg.Wait()
+
+	/* Ensure that creators come from the same host as the post itself */
+	for _, creator := range p.creators {
+		if asActor, isActor := creator.(*Actor); isActor {
+			if asActor.Identifier() == nil && id == nil {
+				continue
+			}
+
+			if (asActor.Identifier() == nil || id == nil) || asActor.Identifier().Host != id.Host {
+				return nil, errors.New("post contains forged creators")
+			}
+		}
+		/* These are necessarily Failure types, so don't need to be checked */
+	}
+
 	return p, nil
 }
 
@@ -115,7 +153,7 @@ func (p *Post) Parents(quantity uint) ([]Tangible, Tangible) {
 	if p.parentErr != nil {
 		return []Tangible{NewFailure(p.parentErr)}, nil
 	}
-	fetchedParent, fetchedParentErr := NewPost(p.parent, p.id)
+	fetchedParent, fetchedParentErr := NewPostFromObject(p.parentObject, p.parentIdentifier)
 	if fetchedParentErr != nil {
 		return []Tangible{NewFailure(fetchedParentErr)}, nil
 	}
@@ -124,6 +162,13 @@ func (p *Post) Parents(quantity uint) ([]Tangible, Tangible) {
 	}
 	fetchedParentParents, fetchedParentFrontier := fetchedParent.Parents(quantity - 1)
 	return append([]Tangible{fetchedParent}, fetchedParentParents...), fetchedParentFrontier
+}
+
+func (p *Post) ParentIdentifier() *url.URL {
+	if p.parentErr != nil {
+		return nil
+	}
+	return p.parentIdentifier
 }
 
 func (p *Post) header(width int) string {
