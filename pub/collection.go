@@ -165,14 +165,5 @@ func (c *Collection) harvestWithEmptyCount(amount uint, startingPoint uint, empt
 
 	wg.Wait()
 
-	n := 0
-	for _, element := range fromThisPage {
-		if element != nil {
-			fromThisPage[n] = element
-			n += 1
-		}
-	}
-	fromThisPage = fromThisPage[:n]
-
 	return append(fromThisPage, fromLaterPages...), nextCollection, nextStartingPoint
 }
