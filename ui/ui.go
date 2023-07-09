@@ -186,6 +186,7 @@ func (s *State) Update(input byte) {
 			} else {
 				s.buffer = ""
 				s.mode = normal
+				s.output(s.view())
 			}
 			return
 		}
