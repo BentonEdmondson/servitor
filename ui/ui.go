@@ -491,14 +491,14 @@ func (s *State) openExternally(link string, mediaType *mime.MediaType) {
 			continue
 		}
 		switch field {
-		case "%u":
+		case "%url":
 			command[i] = link
 			foundPercentU = true
-		case "%m":
+		case "%mimetype":
 			command[i] = mediaType.Essence
-		case "%s":
+		case "%subtype":
 			command[i] = mediaType.Subtype
-		case "%t":
+		case "%supertype":
 			command[i] = mediaType.Supertype
 		}
 	}

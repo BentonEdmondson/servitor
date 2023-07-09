@@ -28,7 +28,7 @@ func Parse() (*Config, error) {
 		Timeout:   10,
 		Feeds:     feeds{},
 		Algos:     algos{},
-		MediaHook: []string{"xdg-open", "%u"},
+		MediaHook: []string{"xdg-open", "%url"},
 	}
 
 	location := location()
