@@ -153,15 +153,15 @@ func (p *Post) Parents(quantity uint) ([]Tangible, Tangible) {
 	if p.parentErr != nil {
 		return []Tangible{NewFailure(p.parentErr)}, nil
 	}
-	fetchedParent, fetchedParentErr := NewPostFromObject(p.parentObject, p.parentIdentifier)
-	if fetchedParentErr != nil {
-		return []Tangible{NewFailure(fetchedParentErr)}, nil
+	parent, err := NewPostFromObject(p.parentObject, p.parentIdentifier)
+	if err != nil {
+		return []Tangible{NewFailure(err)}, nil
 	}
 	if quantity == 1 {
-		return []Tangible{fetchedParent}, fetchedParent
+		return []Tangible{parent}, parent
 	}
-	fetchedParentParents, fetchedParentFrontier := fetchedParent.Parents(quantity - 1)
-	return append([]Tangible{fetchedParent}, fetchedParentParents...), fetchedParentFrontier
+	parentParents, parentFrontier := parent.Parents(quantity - 1)
+	return append([]Tangible{parent}, parentParents...), parentFrontier
 }
 
 func (p *Post) ParentIdentifier() *url.URL {
