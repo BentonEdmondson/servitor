@@ -25,7 +25,7 @@ type bundle struct {
 	err    error
 }
 
-var cache, _ = lru.New[string, bundle](128)
+var cache, _ = lru.New[string, bundle](config.Parsed.Network.CacheSize)
 
 var mediaTypeRegexp = regexp.MustCompile(`(?s)^(([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)/([!#$%&'*+\-.^_\x60|~a-zA-Z0-9]+)).*$`)
 var statusLineRegexp = regexp.MustCompile(`^HTTP/1\.[0-9] ([0-9]{3}).*\n$`)

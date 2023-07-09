@@ -26,6 +26,7 @@ type Config struct {
 	} `toml:"style"`
 	Network   struct {
 		Timeout time.Duration `toml:"timeout_seconds"`
+		CacheSize int `toml:"cache_size"`
 	} `toml:"network"`
 }
 
@@ -43,7 +44,7 @@ func init() {
 		os.Stderr.WriteString(fmt.Errorf("failed to parse %s: %w", location, err).Error() + "\n")
 		os.Exit(1)
 	}
-	if err = normalize(Parsed); err != nil {
+	if err = postprocess(Parsed); err != nil {
 		os.Stderr.WriteString(fmt.Errorf("failed to parse %s: %w", location, err).Error() + "\n")
 		os.Exit(1)
 	}
@@ -60,6 +61,7 @@ func parse(location string) (*Config, error) {
 	config.Style.Colors.Highlight = "#0d7d00"
 	config.Style.Colors.Code = "#4b4b4b"
 	config.Network.Timeout = 10
+	config.Network.CacheSize = 128
 
 	if location == "" {
 		return config, nil
@@ -119,7 +121,7 @@ func hexToAnsi(text string) (string, error) {
 	return strconv.Itoa(int(r)) + ";" + strconv.Itoa(int(g)) + ";" + strconv.Itoa(int(b)), nil
 }
 
-func normalize(config *Config) error {
+func postprocess(config *Config) error {
 	var err error
 	config.Style.Colors.Primary, err = hexToAnsi(config.Style.Colors.Primary)
 	if err != nil {
