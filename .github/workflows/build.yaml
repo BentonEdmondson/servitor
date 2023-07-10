@@ -4,12 +4,15 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@96f53100ba2a5449eb71d2e6604bbcd94b9449b5
       - run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$(git rev-parse --short HEAD)" -o builds/servitor.linux.x86_64
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "-X main.version=$(git rev-parse --short HEAD)" -o builds/servitor.linux.arm64
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=$(git rev-parse --short HEAD)" -o builds/servitor.darwin.x86_64
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=$(git rev-parse --short HEAD)" -o builds/servitor.darwin.arm64
       - uses: softprops/action-gh-release@c9b46fe7aad9f02afd89b12450b780f52dacfb2d
+        # this condition is down here instead of for the entire file so builds happen even for untagged
+        if: startsWith(github.ref, 'refs/tags/')
+        token: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: builds/*
