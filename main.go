@@ -68,7 +68,8 @@ func printRaw(output string) {
 	}
 }
 
-const version = "0.0.0"
+/* Passed by go build */
+var version string = "hi"
 
 func help() {
 	os.Stdout.WriteString(
