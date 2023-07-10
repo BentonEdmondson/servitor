@@ -240,12 +240,6 @@ func (s *State) Update(input byte) {
 		s.buffer = ""
 	}
 
-	if s.mode == opening {
-		s.mode = normal
-		s.buffer = ""
-	}
-
-	/* At this point we know we are in normal mode */
 	switch input {
 	case 'k': // up
 		s.h.Current().feed.MoveUp()
@@ -345,11 +339,11 @@ func (s *State) switchTo(item any) {
 			children:  nextCollection,
 			feed:      feed.CreateAndAppend(children),
 		})
+		s.mode = normal
+		s.buffer = ""
 	default:
 		panic("can't switch to non-Tangible non-Container")
 	}
-	s.mode = normal
-	s.buffer = ""
 	s.loadSurroundings()
 }
 
@@ -403,6 +397,8 @@ func (s *State) openUserInput(input string) {
 		result := pub.FetchUserInput(input)
 		s.m.Lock()
 		s.switchTo(result)
+		s.mode = normal
+		s.buffer = ""
 		s.output(s.view())
 		s.m.Unlock()
 	}()
@@ -416,6 +412,8 @@ func (s *State) openInternally(input string) {
 		result := pub.New(input, nil)
 		s.m.Lock()
 		s.switchTo(result)
+		s.mode = normal
+		s.buffer = ""
 		s.output(s.view())
 		s.m.Unlock()
 	}()
@@ -437,6 +435,8 @@ func (s *State) openFeed(input string) {
 	go func() {
 		result := splicer.NewSplicer(inputs)
 		s.switchTo(result)
+		s.mode = normal
+		s.buffer = ""
 		s.output(s.view())
 	}()
 }
