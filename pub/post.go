@@ -145,7 +145,10 @@ func (p *Post) Children() Container {
 
 func (p *Post) Parents(quantity uint) ([]Tangible, Tangible) {
 	if quantity == 0 {
-		panic("can't fetch zero parents")
+		if errors.Is(p.parentErr, object.ErrKeyNotPresent) {
+			return []Tangible{}, nil
+		}
+		return []Tangible{}, p
 	}
 	if errors.Is(p.parentErr, object.ErrKeyNotPresent) {
 		return []Tangible{}, nil

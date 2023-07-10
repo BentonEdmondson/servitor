@@ -311,10 +311,11 @@ func (s *State) switchTo(item any) {
 			return
 		}
 		if len(narrowed) == 1 {
+			_, frontier := narrowed[0].Parents(0)
 			s.h.Add(&Page{
 				feed:     feed.Create(narrowed[0]),
 				children: narrowed[0].Children(),
-				frontier: narrowed[0],
+				frontier: frontier,
 			})
 		} else {
 			s.h.Add(&Page{
@@ -322,10 +323,11 @@ func (s *State) switchTo(item any) {
 			})
 		}
 	case pub.Tangible:
+		_, frontier := narrowed.Parents(0)
 		s.h.Add(&Page{
 			feed:     feed.Create(narrowed),
 			children: narrowed.Children(),
-			frontier: narrowed,
+			frontier: frontier,
 		})
 	case pub.Container:
 		if s.mode != loading {
