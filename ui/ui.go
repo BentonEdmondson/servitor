@@ -73,7 +73,7 @@ func (s *State) view() string {
 	}
 
 	var top, center, bottom string
-	for i := -config.Parsed.Style.Context; i <= config.Parsed.Style.Context; i++ {
+	for i := -config.Parsed.Network.Context; i <= config.Parsed.Network.Context; i++ {
 		if !s.h.Current().feed.Contains(i) {
 			continue
 		}
@@ -107,10 +107,10 @@ func (s *State) view() string {
 			bottom += serialized
 		}
 	}
-	if s.h.Current().loadingUp && !s.h.Current().feed.Contains(-config.Parsed.Style.Context-1) {
+	if s.h.Current().loadingUp && !s.h.Current().feed.Contains(-config.Parsed.Network.Context-1) {
 		top = "\n  " + style.Color("Loading…") + "\n\n" + top
 	}
-	if s.h.Current().loadingDown && !s.h.Current().feed.Contains(config.Parsed.Style.Context+1) {
+	if s.h.Current().loadingDown && !s.h.Current().feed.Contains(config.Parsed.Network.Context+1) {
 		bottom += "  " + style.Color("Loading…") + "\n"
 	}
 
@@ -333,7 +333,7 @@ func (s *State) switchTo(item any) {
 			s.buffer = ""
 			s.output(s.view())
 		}
-		children, nextCollection, newBasepoint := narrowed.Harvest(uint(config.Parsed.Style.Context + 1), 0)
+		children, nextCollection, newBasepoint := narrowed.Harvest(uint(config.Parsed.Network.Context + 1), 0)
 		s.h.Add(&Page{
 			basepoint: newBasepoint,
 			children:  nextCollection,
@@ -360,7 +360,7 @@ func (s *State) SetWidthHeight(width int, height int) {
 
 func (s *State) loadSurroundings() {
 	page := s.h.Current()
-	context := config.Parsed.Style.Context
+	context := config.Parsed.Network.Context
 	if !page.loadingUp && !page.feed.Contains(-context) && page.frontier != nil {
 		page.loadingUp = true
 		go func() {

@@ -55,11 +55,11 @@ func parse(location string) (*Config, error) {
 	config := &Config{}
 	config.Feeds = map[string][]string{}
 	config.Media.Hook = []string{"xdg-open", "%url"}
-	config.Style.Context = 5
 	config.Style.Colors.Primary = "#A4f59b"
 	config.Style.Colors.Error = "#9c3535"
 	config.Style.Colors.Highlight = "#0d7d00"
 	config.Style.Colors.Code = "#4b4b4b"
+	config.Network.Context = 5
 	config.Network.Timeout = 10
 	config.Network.CacheSize = 128
 
