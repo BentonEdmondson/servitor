@@ -7,9 +7,9 @@ A command line, RSS-style reader for the fediverse.
 # Features
 
 * **Works with fediverse software such as Mastodon, Lemmy, PeerTube, and more**
-  * microblogs like Linus Torvalds @torvalds@social.kernel.org
-  * video channels like Luke Smith @luke@videos.lukesmith.xyz
-  * subs like RPGMemes @rpgmemes@ttrpg.network
+  * microblogs like Linus Torvalds [@torvalds@social.kernel.org](https://social.kernel.org/torvalds)
+  * video channels like Luke Smith [@luke@videos.lukesmith.xyz](https://videos.lukesmith.xyz/a/luke/video-channels)
+  * subs like RPGMemes [@rpgmemes@ttrpg.network](https://ttrpg.network/c/rpgmemes)
   * hashtags like tweesecake.social's [#linux](https://tweesecake.social/tags/linux)
 * **Doesn't require a server**
 * **Sidesteps defederation politics**
