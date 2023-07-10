@@ -2,7 +2,7 @@
 
 A command line, RSS-style reader for the fediverse.
 
-// image
+![](/assets/demo.gif)
 
 * **Works with fediverse software such as Mastodon, Lemmy, PeerTube, and more**: This browser works with all fediverse software that implements ActivityPub. You can view and subscribe to microblogs (like Linus Torvalds @torvalds@social.kernel.org), video channels (like Luke Smith @luke@videos.lukesmith.xyz), subs (like RPGMemes @rpgmemes@ttrpg.network), and hashtags (like tweesecake.social's [#linux](https://tweesecake.social/tags/linux)) all in the same reader.
 * **Doesn't require a server**: This browser does not rely on you having a server, so you don't have to host your own server or find another one to rely on.
