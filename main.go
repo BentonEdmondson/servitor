@@ -42,8 +42,7 @@ func main() {
 		err = state.Subcommand(os.Args[1], os.Args[2])
 		if err != nil {
 			term.Restore(int(os.Stdin.Fd()), oldTerminal)
-			help()
-			os.Stdout.WriteString("\n" + err.Error() + "\n")
+			os.Stdout.WriteString(err.Error() + "\n")
 			os.Exit(1)
 		}
 	}()
