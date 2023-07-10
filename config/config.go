@@ -16,15 +16,15 @@ type Config struct {
 		Hook []string `toml:"hook"`
 	}	`toml:"media"`
 	Style	  struct {
-		Context int `toml:"context"`
 		Colors struct {
 			Primary string `toml:"primary"`
 			Error string `toml:"error"`
 			Highlight string `toml:"highlight"`
-			Code string `toml:"code"`
+			Code string `toml:"code_background"`
 		} `toml:"colors"`
 	} `toml:"style"`
 	Network   struct {
+		Context int `toml:"preload_amount"`
 		Timeout time.Duration `toml:"timeout_seconds"`
 		CacheSize int `toml:"cache_size"`
 	} `toml:"network"`
