@@ -1,6 +1,6 @@
 # Servitor
 
-A command line, RSS-style reader for the fediverse.
+A command line, RSS-style ActivityPub client that works with Mastodon, Lemmy, PeerTube, and more.
 
 ![](/assets/demo.gif)
 
@@ -85,7 +85,27 @@ hook = [
 ]
 ```
 
-`media.hook` defaults to `["xdg-open", "%url"]`. 
+`media.hook` defaults to `["xdg-open", "%url"]`.
+
+## Keybindings
+
+### Navigation
+`j` &mdash; move down\
+`k` &mdash; move up\
+space &mdash; select the highlighted item\
+`c` &mdash; view the creator of the highlighted item\
+`r` &mdash; view the recipient of the highlighted item (e.g. the group it was posted to)\
+`a` &mdash; view the actor of the activity (e.g. view the retweeter of a retweet)\
+`h` &mdash; move back in your browser history\
+`l` &mdash; move forward in your browser history\
+`g` &mdash; move to the expanded item (i.e. move to the current OP)\
+`ctrl+c` &mdash; exit the program
+
+### Media
+`p` &mdash; open the highlighted user's profile picture\
+`b` &mdash; open the highlighted user's banner\
+`o` &mdash; open the content of a post itself (e.g. open the video associated with a video post)\
+number keys &mdash; open a link within the highlighted text
 
 # Where to Find Content to Follow
 
