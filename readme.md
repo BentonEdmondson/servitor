@@ -120,7 +120,9 @@ Please submit a PR if you know of another good resource.
 
 # A Brief Overview of the Fediverse
 
-For the purpose of this browser, the fediverse can be thought of as a collection of internet forums that use a shared protocol called ActivityPub. Instead of serving content over `text/html`, they serve their content over `application/activity+json`, which provides for higher-level semantics such as comment sections, retweets, etc. Just like conventional forums, each site has a different moderation policy, and the administrators of each site have complete control over the moderation of that site. Unlike conventional internet forums, the fediverse allows users from one site to interact with (like, follow, comment on, etc) users and posts on another site, assuming the administrators of the both sites permit the interaction.
+For the purpose of this browser, the fediverse can be thought of as a collection of internet forums that use a shared protocol called ActivityPub. Instead of serving content over `text/html`, they serve their content over `application/activity+json`, which provides for higher-level semantics such as comment sections, retweets, etc.
+
+Just like conventional forums, each site has a different moderation policy, and the administrators of each site have complete control over the moderation of that site. Unlike conventional internet forums, the fediverse allows users from one site to interact with (like, follow, comment on, etc) users and posts on another site, assuming the administrators of the both sites permit the interaction.
 
 # Supported Markup Formats
 
