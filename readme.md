@@ -1,6 +1,6 @@
 # Servitor
 
-A command-line RSS-style ActivityPub client that works with Mastodon, Lemmy, PeerTube, and more.
+A command-line Fediverse client that doesn’t require a server.
 
 ![](/assets/demo.gif)
 
