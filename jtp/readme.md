@@ -4,7 +4,7 @@ JTP is a profile (in the same sense as RFC 3339) of HTTP/1.0 that facilitates ex
 
 ## Motivation
 
-I had read about the `gemini://` protocol as a simplified alternative to `https://`, and so wanted to explore how complicated `https://` really was. Ultimately, I found that the subset of features needed to do a basic JSON transfer is extremely simple.
+I had read about the `gemini://` protocol as a simplified alternative to `https://`, and so I wanted to explore how complicated `https://` really was. Ultimately, I found that the subset of features needed to do a basic JSON transfer is extremely simple.
 
 ## Request
 
