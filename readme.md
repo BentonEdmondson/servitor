@@ -56,7 +56,7 @@ highlight = "#0d7d00"
 code_background = "#4b4b4b"
 
 [network]
-preload_amount = 5 # the amount of posts to load in above and below the highlighted post
+preload_amount = 5 # the number of posts to load in above and below the highlighted post
 timeout_seconds = 5
 cache_size = 128 # the number of JSON responses the cache can hold
 
