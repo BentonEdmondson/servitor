@@ -69,7 +69,7 @@ func printRaw(output string) {
 }
 
 /* Passed by go build */
-var version string = "hi"
+var version string
 
 func help() {
 	os.Stdout.WriteString(
