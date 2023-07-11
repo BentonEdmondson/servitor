@@ -21,12 +21,14 @@ A command line, RSS-style ActivityPub client that works with Mastodon, Lemmy, Pe
 
 # Installation
 
-Run `uname -ms` and, based on the corresponding output, download the latest corresponding [release](https://github.com/BentonEdmondson/servitor/releases). I only necessarily test `Linux x86_64` releases, but will fix issues with others as they arise.
+Run `uname -ms` and, based on the corresponding output, download the latest corresponding [release](https://github.com/BentonEdmondson/servitor/releases).
+
+I only necessarily test `Linux x86_64` releases, but will fix issues with others as they arise.
 
 # Usage
 
-* `servitor open @username@example.org` to open profiles.\
-* `servitor open https://example.org/user/username` to open links.\
+* `servitor open @username@example.org` to open profiles.
+* `servitor open https://example.org/user/username` to open links.
 * `servitor feed feed-name` to open feeds (see below).
 
 ## Configuration
@@ -35,7 +37,8 @@ The config file is located at `~/.config/servitor/config.toml`.
 
 ```toml
 [feeds]
-# the entries will be spliced together in reverse-chronological order, just like an RSS reader
+# the entries will be spliced together
+# in chronological order, like an RSS reader
 linux = [ # open with `servitor feed linux`
     "@torvalds@social.kernel.org",
     "@luke@videos.lukesmith.xyz",
