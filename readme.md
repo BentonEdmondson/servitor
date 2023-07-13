@@ -139,8 +139,3 @@ I tried to minimize the amount of dependencies used. They are:
 * [BurntSushi/toml](https://github.com/BurntSushi/toml) for parsing the config file
 * [yuin/goldmark](https://github.com/yuin/goldmark) for rendering posts published in Markdown (currently the only software I'm aware of that serves posts with Markdown is PeerTube)
 * [hashicorp/golang-lru/v2](https://github.com/hashicorp/golang-lru) for the local cache
-
-# Planned Improvements
-
-* The ability to connect to ActivityPub search engines and algorithm providers (however controversial that may be)
-* Better support for long-form content
