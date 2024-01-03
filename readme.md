@@ -21,9 +21,9 @@ A command-line Fediverse client that doesn’t require a server.
 
 # Installation
 
-Run `uname -ms` and, based on the corresponding output, download the latest corresponding [release](https://github.com/BentonEdmondson/servitor/releases).
+Run `uname -ms` and, based on the output, download the latest corresponding [release](https://github.com/BentonEdmondson/servitor/releases).
 
-I only necessarily test `Linux x86_64` releases, but will fix issues with others as they arise.
+I only test `Linux x86_64` releases.
 
 # Usage
 
