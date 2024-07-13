@@ -21,7 +21,12 @@ A command-line Fediverse client that doesn’t require a server.
 
 # Installation
 
-Run `uname -ms` and, based on the output, download the latest corresponding [release](https://github.com/BentonEdmondson/servitor/releases).
+1. Run `uname -ms` and, based on the output, download the latest corresponding [release](https://github.com/BentonEdmondson/servitor/releases).
+1. `cd` into the directory that servitor is in (e.g. `cd ~/Downloads`).
+1. Run `mv servitor-version-arch-os servitor` to rename the binary to `servitor`.
+1. Run `chmod +x servitor` to make it executable.
+1. Run `./servitor open @Gargron@mastodon.social`, for example, to try it out.
+1. Run `mv servitor ~/.local/bin` to allow it to be run from anywhere (might not work on some distributions).
 
 I only test `Linux x86_64` releases.
 
@@ -68,10 +73,10 @@ cache_size = 128 # the number of JSON responses the cache can hold
 
 There are various ways to open files on Linux (`xdg-open`, `mailcap`, [`handlr`](https://github.com/chmln/handlr), bespoke scripts, etc). The `media.hook` config option allows you to configure whichever one you use. The value is a list of strings that will be executed as a command. Parameters will be substituted as follows:
 
-* `%url` &mdash; substituted with the URL being opened
-* `%mimetype` &mdash; substituted with the media type being opened, e.g. `image/png`
-* `%supertype` &mdash; substituted with the first part of the media type, e.g. `image`
-* `%subtype` &mdash; substituted with the subtype, e.g. `png`
+* `%url` — substituted with the URL being opened
+* `%mimetype` — substituted with the media type being opened, e.g. `image/png`
+* `%supertype` — substituted with the first part of the media type, e.g. `image`
+* `%subtype` — substituted with the subtype, e.g. `png`
 
 Here is a simple example config that opens videos and gifs in `mpv`, images in `feh`, and everything else in `firefox`:
 
@@ -94,22 +99,48 @@ hook = [
 ## Keybindings
 
 ### Navigation
-`j` &mdash; move down\
-`k` &mdash; move up\
-space &mdash; select the highlighted item\
-`c` &mdash; view the creator of the highlighted item\
-`r` &mdash; view the recipient of the highlighted item (e.g. the group it was posted to)\
-`a` &mdash; view the actor of the activity (e.g. view the retweeter of a retweet)\
-`h` &mdash; move back in your browser history\
-`l` &mdash; move forward in your browser history\
-`g` &mdash; move to the expanded item (i.e. move to the current OP)\
-`ctrl+c` &mdash; exit the program
+`j` — move down\
+`k` — move up\
+`space` — select the highlighted item\
+`c` — view the creator of the highlighted item\
+`r` — view the recipient of the highlighted item (e.g. the group it was posted to)\
+`a` — view the actor of the activity (e.g. view the retweeter of a retweet)\
+`h` — move back in your browser history\
+`l` — move forward in your browser history\
+`g` — move to the expanded item (i.e. move to the current OP)\
+`ctrl+c` — exit the program
 
 ### Media
-`p` &mdash; open the highlighted user's profile picture\
-`b` &mdash; open the highlighted user's banner\
-`o` &mdash; open the content of a post itself (e.g. open the video associated with a video post)\
-number keys &mdash; open a link within the highlighted text
+`p` — open the highlighted user's profile picture\
+`b` — open the highlighted user's banner\
+`o` — open the content of a post itself (e.g. open the video associated with a video post)\
+number keys — open a link within the highlighted text
+
+# Contributing
+
+## Building
+
+```
+CGO_ENABLED=0 go build -ldflags "-X main.version=$(git rev-parse --short HEAD)"
+```
+
+## Updating
+
+```
+go get -u all && go mod tidy
+```
+
+## Testing
+
+```
+go test ./...
+```
+
+## Formatting
+
+```
+go fmt ./...
+```
 
 # Where to Find Content to Follow
 
