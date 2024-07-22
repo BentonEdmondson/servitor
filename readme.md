@@ -165,7 +165,7 @@ Servitor can render posts published in:
 
 # Dependencies
 
-I tried to minimize the amount of dependencies used. They are:
+I tried to minimize the number of dependencies used. They are:
 
 * [BurntSushi/toml](https://github.com/BurntSushi/toml) for parsing the config file
 * [yuin/goldmark](https://github.com/yuin/goldmark) for rendering posts published in Markdown (currently the only software I'm aware of that serves posts with Markdown is PeerTube)
